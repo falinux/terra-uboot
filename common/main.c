@@ -53,6 +53,12 @@
 #include <linux/ctype.h>
 #include <menu.h>
 
+//faliunx
+#include <tgpio_imx6q.h>
+#include <tgpio_imx6q-iomux.h>
+
+static int rsw = 0;
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /*
@@ -230,6 +236,35 @@ int abortboot(int bootdelay)
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else
+
+        //falinux added
+        rsw = get_rotary_switch_value();
+
+	if( rsw == 9 ) {
+		char *str = strdup(getenv("bootargs_recv"));
+ 		printf("\n------Recovery Mode-------\n");
+		setenv ("bootargs", str);  /* set or delete definition */
+		if (str != NULL)
+			free (str);
+	} else if( rsw == 8 ) {
+		char *str = strdup(getenv("bootargs_recv"));
+                printf("\n------Factory Mode-------\n");
+                setenv ("bootargs", str);  /* set or delete definition */
+                if (str != NULL)
+                        free (str);
+	} else if( rsw == 7 ) {
+		char *str = strdup(getenv("bootargs_recv"));
+                printf("\n------Reserve Mode-------\n");
+                setenv ("bootargs", str);  /* set or delete definition */
+                if (str != NULL)
+                        free (str);
+	} else {
+		char *str = strdup(getenv("bootargs_sata"));
+                setenv ("bootargs", str);  /* set or delete definition */
+                if (str != NULL)
+                        free (str);
+	}	
+
 	if (bootdelay >= 0)
 		printf("Hit any key to stop autoboot: %2d ", bootdelay);
 #endif
@@ -248,8 +283,8 @@ int abortboot(int bootdelay)
 	}
 #endif
 
-	while ((bootdelay > 0) && (!abort)) {
-		--bootdelay;
+	while ((bootdelay >= 0) && (!abort)) {
+		if (bootdelay > 0) --bootdelay;
 		/* delay 1000 ms */
 		ts = get_timer(0);
 		do {
@@ -263,9 +298,11 @@ int abortboot(int bootdelay)
 # endif
 				break;
 			}
+			if (!bootdelay) break;
 			udelay(10000);
 		} while (!abort && get_timer(ts) < 1000);
 
+		if (!bootdelay) break;
 		printf("\b\b\b%2d ", bootdelay);
 	}
 
@@ -485,14 +522,27 @@ void main_loop (void)
 # ifdef CONFIG_AUTOBOOT_KEYED
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 # endif
+		// falinux boot command retry
+		{
+			int i;
 
-		run_command_list(s, -1, 0);
+			for(i=0; i<CONFIG_BOOTCMD_RETRY_COUNT; i++) {
+				run_command_list(s, -1, 0);
+				printf(" boot cmd retry ... %d\n", i+1);
+			}
+			// FIXME board boot fail..
+			// buzzer.... 
+			make_wave( 2000, 300 );
+			mdelay(2000);
+			make_wave( 2000, 300 );
+			set_front_led(0, 1);
+		}
 
 # ifdef CONFIG_AUTOBOOT_KEYED
 		disable_ctrlc(prev);	/* restore Control C checking */
 # endif
 	}
-
+		
 # ifdef CONFIG_MENUKEY
 	if (menukey == CONFIG_MENUKEY) {
 		s = getenv("menucmd");

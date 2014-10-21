@@ -1890,7 +1890,8 @@ static int run_list_real(struct pipe *pi)
 		}
 		last_return_code=rcode;
 #else
-		if (rcode < -1) {
+		if (rcode < -1 || rcode==1) {
+			if (rcode==1) rcode = -1;
 			last_return_code = -rcode - 2;
 			return -2;	/* exit */
 		}
@@ -3190,7 +3191,7 @@ static int parse_stream_outer(struct in_str *inp, int flag)
 			run_list(ctx.list_head);
 #else
 			code = run_list(ctx.list_head);
-			if (code == -2) {	/* exit */
+			if (code == -2 || code == 1) {	/* exit */
 				b_free(&temp);
 				code = 0;
 				/* XXX hackish way to not allow exit from main loop */

@@ -104,6 +104,31 @@ int ext4fs_read_file(struct ext2fs_node *node, int pos,
 			skipfirst = blockoff;
 			blockend -= skipfirst;
 		}
+		// falinux 2013.08.07
+#if 0
+		/* grab middle blocks in one go */
+		if (i != pos / blocksize && i != blockcnt - 1 && blockcnt > 3) {
+			int oldblk = blknr;
+			int blocknxt;
+			while (i < blockcnt - 1) {
+				blocknxt = ext2fs_read_block(node, i + 1);
+				if (blocknxt == (oldblk + 1)) {
+					oldblk = blocknxt;
+					i++;
+				} else {
+					blocknxt = ext2fs_read_block(node, i);
+					break;
+				}
+			}
+
+			if (oldblk == blknr)
+				blockend = blocksize;
+			else
+				blockend = (1 + blocknxt - blknr) * blocksize;
+		}
+
+		blknr = blknr << log2blocksize;
+#endif
 		if (blknr) {
 			int status;
 
@@ -148,7 +173,13 @@ int ext4fs_read_file(struct ext2fs_node *node, int pos,
 			}
 			memset(buf, 0, blocksize - skipfirst);
 		}
+		// falinux remove and added
+#if 1
 		buf += blocksize - skipfirst;
+#else
+		buf += blockend - skipfirst;
+#endif
+
 	}
 	if (previous_block_number != -1) {
 		/* spill */
@@ -205,10 +236,12 @@ int ext4fs_probe(block_dev_desc_t *fs_dev_desc,
 	return 0;
 }
 
+#define msleep(a)                  udelay(a * 1000)
 int ext4_read_file(const char *filename, void *buf, int offset, int len)
 {
 	int file_len;
 	int len_read;
+	int ret = 0;
 
 	if (offset != 0) {
 		printf("** Cannot support non-zero offset **\n");
@@ -216,9 +249,27 @@ int ext4_read_file(const char *filename, void *buf, int offset, int len)
 	}
 
 	file_len = ext4fs_open(filename);
+
+	//falinux
+        ret = strcmp(filename, "uImage.imx6-3.2");
+
 	if (file_len < 0) {
 		printf("** File not found %s **\n", filename);
+
+		//falinux
+                if ( !(ret == 0) ) {
+                        make_wave( 2000, 300 );
+                        msleep(2000),
+                        make_wave( 2000, 300 );
+                        set_front_led( 0, 1 );
+		}
+
 		return -1;
+	}
+
+	//falinux
+	if( ret == 0 ) {
+		set_front_led( 0, 1 );
 	}
 
 	if (len == 0)

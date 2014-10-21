@@ -304,6 +304,18 @@ static u32 get_usdhc_clk(u32 port)
 	return root_freq / (usdhc_podf + 1);
 }
 
+void ezimx_set_mx6_cpu_clock_99600(void)
+{
+	u32 div;
+
+	printf("FALINUX clock change : %dMHz -> ", mxc_get_clock(MXC_ARM_CLK) / 1000000);
+	div = __raw_readl(&imx_ccm->analog_pll_sys);
+	div &= ~BM_ANADIG_PLL_SYS_DIV_SELECT;
+	div |= 0x53;
+	__raw_writel(div, &imx_ccm->analog_pll_sys_set);
+	printf("%dMHz\n", mxc_get_clock(MXC_ARM_CLK) / 1000000);
+}
+
 u32 imx_get_uartclk(void)
 {
 	return get_uart_clk();

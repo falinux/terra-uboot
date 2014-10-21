@@ -387,7 +387,7 @@ static void write_cell(u8 *addr, u64 val, int size)
 	}
 }
 
-#define MEMORY_BANKS_MAX 4
+#define MEMORY_BANKS_MAX 8
 int fdt_fixup_memory_banks(void *blob, u64 start[], u64 size[], int banks)
 {
 	int err, nodeoffset;
