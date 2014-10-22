@@ -401,6 +401,7 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 #endif
 		if (data->flags & MMC_DATA_READ)
 			check_and_invalidate_dcache_range(cmd, data);
+
 	}
 
 	esdhc_write32(&regs->irqstat, -1);
@@ -577,7 +578,6 @@ int fsl_esdhc_initialize(bd_t *bis, struct fsl_esdhc_cfg *cfg)
 	}
 
 	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_8BIT | MMC_MODE_HC;
-
 	if (cfg->max_bus_width > 0) {
 		if (cfg->max_bus_width < 8)
 			mmc->host_caps &= ~MMC_MODE_8BIT;

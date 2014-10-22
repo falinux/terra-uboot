@@ -52,8 +52,6 @@
 // [FALINUX] we use always uart1 even sabrelite board
 //#define CONFIG_MXC_UART_BASE	       UART2_BASE
 #define CONFIG_MXC_UART_BASE	       UART1_BASE
-#define	CONFIG_BOOTCMD_RETRY_COUNT		20
-#define	CONFIG_EZ_IMX6_NADIA
 
 #define CONFIG_CMD_SF
 #ifdef CONFIG_CMD_SF
@@ -76,9 +74,7 @@
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
-//falinux remove and added
-//#define CONFIG_SYS_FSL_USDHC_NUM       2
-#define CONFIG_SYS_FSL_USDHC_NUM       1
+#define CONFIG_SYS_FSL_USDHC_NUM       2
 
 #define CONFIG_MMC
 #define CONFIG_CMD_MMC
@@ -156,7 +152,7 @@
 
 #undef CONFIG_CMD_IMLS
 
-#define CONFIG_BOOTDELAY	       5
+#define CONFIG_BOOTDELAY	       3
 
 #define CONFIG_PREBOOT                 ""
 
@@ -164,68 +160,40 @@
 #define CONFIG_SYS_TEXT_BASE	       0x17800000
 
 #if 0
-// HDD boot
-        "bootcmd=ext2load mmc 0:1 $loadaddr /boot/uImage.imx6; " \
-                        "ext2load mmc 0:1 $fdt_addr /boot/imx6q-nadia-f1.dtb; " \
-                        "bootm $loadaddr - $fdt_addr\0" \
-        "bootargs_sata=console=ttymxc0,115200 root=/dev/sda1 rw " \
-              "rootfstype=ext4 rootdelay=3 \0" \
+	"bootcmd=ext2load mmc 1:1 $loadaddr uImage.imx6-3.7; " \
+			"ext2load mmc 1:1 $fdt_addr imx6q-sabrelite.dtb; " \
+			"bootm $loadaddr - $fdt_addr\0" \
 
-// MMC Recovery 
-        "bootcmd=ext2load mmc 0:1 $loadaddr /boot/uImage.imx6; " \
-                        "ext2load mmc 0:1 $fdt_addr /boot/imx6q-nadia-f1.dtb; " \
-                        "bootm $loadaddr - $fdt_addr\0" \
-        "bootargs_recv=console=ttymxc0,115200 root=/dev/mmcblk0p1 rw " \
-              "rootfstype=ext2 rootdelay=3 \0" \
+	"bootcmd=tftpboot $loadaddr uImage.imx6-3.7; " \
+			"tftpboot $fdt_addr imx6q-sabrelite.dtb; " \
+			"bootm $loadaddr - $fdt_addr\0" \
 
-// MMC Ubuntu
-        "bootcmd=ext2load mmc 0:1 $loadaddr /boot/uImage.imx6; " \
-                        "ext2load mmc 0:1 $fdt_addr /boot/imx6q-nadia-f1.dtb; " \
-                        "bootm $loadaddr - $fdt_addr\0" \
-        "bootargs_mmc=console=ttymxc0,115200 root=/dev/mmcblk0p2 rw " \
-              "rootfstype=ext4 rootdelay=3 \0" \
-
-	"readkernel=ext2load mmc 0 $loadaddr /boot/uImage.imx6; " \
-		"ext2load mmc 0 $fdt_addr /boot/imx6q-nadia-f1.dtb \0" \
-
-	"readramdisk=ext2load mmc 0 $ram_addr /boot/ramdisk-1.0-imx6-24M.gz \0" \
+	"bootargs=console=ttymxc0,115200 root=/dev/sda2 rw " \
+              "rootfstype=ext4 rootwait fixrtc mxcfb0:dev=hdmi,1024x768@60,if=RGB24\0" \
 	
 #endif
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
 	"uimage=uImage\0" \
-	"console=ttymxc0\0" \
+	"console=ttymxc1\0" \
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
-	"fdt_file=/dtbs/imx6q-nadia-f1.dtb\0" \
-	"fdt_addr=0x18000000\0" \
+	"fdt_file=/dtbs/imx6q-sabrelite.dtb\0" \
+	"fdt_addr=0x11000000\0" \
 	"boot_fdt=try\0" \
-	"ram_addr=0x1a000000\0" \
-	"bootcmd=mmc rescan; mmcinfo; ext2ls mmc 0; mmc dev 0; run readkernel; run readramdisk; " \
+	"bootcmd=tftpboot $loadaddr /equalizer/uImage.imx6-3.2; " \
+			"tftpboot $fdt_addr /equalizer/imx6q-sabrelite.dtb; " \
 			"bootm $loadaddr - $fdt_addr\0" \
-	"bootargs=console=ttymxc0,115200 root=/dev/sda1 rw --no-log " \
-              "rootfstype=ext4 rootdelay=5 \0" \
-        "bootargs_sata=console=ttymxc0,115200 root=/dev/sda1 rw --no-log " \
-              "rootfstype=ext4 rootwait \0" \
-        "bootargs_recv=console=ttymxc0,115200 root=/dev/ram0 rw --no-log " \
-              "initrd=0x1a000000,24M ramdisk=24576 \0" \
-        "bootargs_mmc=console=ttymxc0,115200 root=/dev/mmcblk0p2 rw --no-log " \
-              "rootfstype=ext4 rootdelay=5 \0" \
-	"readkernel=ext2load mmc 0 $loadaddr /boot/uImage.imx6; " \
-		"ext2load mmc 0 $fdt_addr /boot/imx6q-nadia-f1.dtb \0" \
-	"readramdisk=ext2load mmc 0 $ram_addr /boot/ramdisk-1.0-imx6-24M.gz \0" \
-	"upkernel=tftpboot $loadaddr uImage.imx6; " \
-		"tftpboot $fdt_addr imx6q-nadia-f1.dtb; " \
-		"tftpboot $ram_addr ramdisk.imx6.test.gz; " \
-		"bootm $loadaddr - $fdt_addr \0" \
-	"ethaddr=00:ee:ee:12:12:23\0" \
-	"serverip=192.168.6.124\0" \
-	"ipaddr=192.168.3.241\0" \
+	"bootargs=console=ttymxc0,115200 root=/dev/mmcblk0p1 init=/bin/sh rw " \
+              "rootfstype=ext2 rootdelay=3 video=mxcfb0:dev=hdmi,1024x768@60,if=RGB24\0" \
+	"ethaddr=00:ee:ee:12:12:22\0" \
+	"serverip=192.168.6.1\0" \
+	"ipaddr=192.168.3.240\0" \
 	"netmask=255.255.0.0\0" \
 	"gatewayip=192.168.10.1\0" \
 	"ip_dyn=yes\0" \
-	"mmcdev=0\0" \
-	"mmcpart=0\0" \
+	"mmcdev=1\0" \
+	"mmcpart=1\0" \
 	"mmcroot=/dev/mmcblk0p3 rootwait rw\0" \
 	"mmcargs=setenv bootargs console=${console},${baudrate} " \
 		"root=${mmcroot}\0" \
@@ -276,6 +244,7 @@
 		"fi;\0"
 
 #define CONFIG_BOOTCOMMAND \
+	   "mmc dev ${mmcdev};" \
 	   "mmc dev ${mmcdev}; if mmc rescan; then " \
 		   "if run loadbootscript; then " \
 			   "run bootscript; " \
@@ -286,6 +255,8 @@
 			   "fi; " \
 		   "fi; " \
 	   "else run netboot; fi"
+
+#define CONFIG_ARP_TIMEOUT     200UL
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP
@@ -309,32 +280,15 @@
 #define CONFIG_CMDLINE_EDITING
 
 /* Physical Memory Map */
+#define CONFIG_NR_DRAM_BANKS	       1
+#define PHYS_SDRAM		       MMDC0_ARB_BASE_ADDR
 #ifdef CONFIG_EZ_IMX6_DDR_SIZE_2G
-#define CONFIG_NR_DRAM_BANKS    1
-#elif defined CONFIG_EZ_IMX6_DDR_SIZE_4G
-#define CONFIG_NR_DRAM_BANKS    7
+#define PHYS_SDRAM_SIZE			       (2u * 1024 * 1024 * 1024)
 #else
 #define PHYS_SDRAM_SIZE			       (1u * 1024 * 1024 * 1024)
 #endif
 
-#define PHYS_SDRAM_1        MMDC0_ARB_BASE_ADDR
-#define PHYS_SDRAM_1_SIZE   (2u * 1024 * 1024 * 1024)
-#define PHYS_SDRAM_2        (PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE)
-#define PHYS_SDRAM_2_SIZE   (1u * 1024 * 1024 * 1024)
-#define PHYS_SDRAM_3        (PHYS_SDRAM_2 + PHYS_SDRAM_2_SIZE)
-#define PHYS_SDRAM_3_SIZE   (512u * 1024 * 1024)
-#define PHYS_SDRAM_4        (PHYS_SDRAM_3 + PHYS_SDRAM_3_SIZE)
-#define PHYS_SDRAM_4_SIZE   (128* 1024 * 1024)
-#define PHYS_SDRAM_5        (PHYS_SDRAM_4 + PHYS_SDRAM_4_SIZE)
-#define PHYS_SDRAM_5_SIZE   (64* 1024 * 1024)
-#define PHYS_SDRAM_6        (PHYS_SDRAM_5 + PHYS_SDRAM_5_SIZE)
-#define PHYS_SDRAM_6_SIZE   (32* 1024 * 1024)
-#define PHYS_SDRAM_7        (PHYS_SDRAM_6 + PHYS_SDRAM_6_SIZE)
-#define PHYS_SDRAM_7_SIZE   (16* 1024 * 1024)
-#define PHYS_SDRAM_8        (PHYS_SDRAM_7 + PHYS_SDRAM_7_SIZE)
-#define PHYS_SDRAM_8_SIZE   (8* 1024 * 1024)
-
-#define CONFIG_SYS_SDRAM_BASE	       PHYS_SDRAM_1
+#define CONFIG_SYS_SDRAM_BASE	       PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR       IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE       IRAM_SIZE
 
@@ -348,13 +302,11 @@
 
 #define CONFIG_ENV_SIZE			(8 * 1024)
 
-#define CONFIG_ENV_IS_IN_MMC		1 
+#define CONFIG_ENV_IS_IN_MMC
 /* #define CONFIG_ENV_IS_IN_SPI_FLASH */
 
 #if defined(CONFIG_ENV_IS_IN_MMC)
-//falinux remove and added
-//#define CONFIG_ENV_OFFSET		(6 * 64 * 1024)
-#define CONFIG_ENV_OFFSET		( 512 * 1024 )
+#define CONFIG_ENV_OFFSET		(6 * 64 * 1024)
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #define	CONFIG_SYS_MMC_ENV_PART		0
 #elif defined(CONFIG_ENV_IS_IN_SPI_FLASH)

@@ -737,6 +737,7 @@ void phy_connect_dev(struct phy_device *phydev, struct eth_device *dev)
 	}
 	phydev->dev = dev;
 	debug("%s connected to %s\n", dev->name, phydev->drv->name);
+	printf("%s connected to %s\n", dev->name, phydev->drv->name);
 }
 
 struct phy_device *phy_connect(struct mii_dev *bus, int addr,
