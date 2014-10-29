@@ -1,8 +1,8 @@
 /**    
     @file     tgpio_imx6.c
     @date     2013/7/22
-    @author   ?????? freefrug@falinux.com  FALinux.Co.,Ltd.
-    @brief    gpio ?? ?????譴????? mmap?? ?結??臼? 제???磯?.
+    @author   오재경 freefrug@falinux.com  FALinux.Co.,Ltd.
+    @brief    gpio 를 드라이버없이 mmap를 이용하여 제어한다.
               Ver 0.7.0
              
               
@@ -24,7 +24,7 @@ extern "C" {
 #endif 	
 
 /// @{
-/// @brief   tgpio_imx6q.h ???? 제???求? ?獨? ????트 
+/// @brief   tgpio_imx6q.h 에서 제공하는 함수 리스트 
 extern void  imx6_gpio_open( int  mcu_nr );
 
 /// @}

@@ -250,26 +250,9 @@ int ext4_read_file(const char *filename, void *buf, int offset, int len)
 
 	file_len = ext4fs_open(filename);
 
-	//falinux
-        ret = strcmp(filename, "uImage.imx6-3.2");
-
 	if (file_len < 0) {
 		printf("** File not found %s **\n", filename);
-
-		//falinux
-                if ( !(ret == 0) ) {
-                        make_wave( 2000, 300 );
-                        msleep(2000),
-                        make_wave( 2000, 300 );
-                        set_front_led( 0, 1 );
-		}
-
 		return -1;
-	}
-
-	//falinux
-	if( ret == 0 ) {
-		set_front_led( 0, 1 );
 	}
 
 	if (len == 0)
