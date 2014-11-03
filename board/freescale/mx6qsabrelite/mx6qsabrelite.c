@@ -172,15 +172,16 @@ int dram_init(void)
 	return 0;
 }
 
-#ifndef CONFIG_EZ_IMX6_NADIA
-iomux_v3_cfg_t const uart1_pads[] = {
-        MX6_PAD_SD3_DAT6__UART1_RXD | MUX_PAD_CTRL(UART_PAD_CTRL),
-        MX6_PAD_SD3_DAT7__UART1_TXD | MUX_PAD_CTRL(UART_PAD_CTRL),
-};
-#else	// EZ_IMX6_NADIA
+#ifdef CONFIG_IMX6_FALINUX //CONFIG_EZ_IMX6_NADIA
+//nadia & em module
 iomux_v3_cfg_t const uart1_pads[] = {
         MX6_PAD_CSI0_DAT11__UART1_RXD | MUX_PAD_CTRL(UART_PAD_CTRL),
         MX6_PAD_CSI0_DAT10__UART1_TXD | MUX_PAD_CTRL(UART_PAD_CTRL),
+};
+#else	//mx6qsabrelite
+iomux_v3_cfg_t const uart1_pads[] = {
+        MX6_PAD_SD3_DAT6__UART1_RXD | MUX_PAD_CTRL(UART_PAD_CTRL),
+        MX6_PAD_SD3_DAT7__UART1_TXD | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 #endif
 
@@ -192,20 +193,9 @@ iomux_v3_cfg_t const uart2_pads[] = {
 #define PC MUX_PAD_CTRL(I2C_PAD_CTRL)
 
 /* I2C1, SGTL5000 */
-#ifndef CONFIG_EZ_IMX6_NADIA
-struct i2c_pads_info i2c_pad_info0 = {
-	.scl = {
-		.i2c_mode = MX6_PAD_EIM_D21__I2C1_SCL | PC,
-		.gpio_mode = MX6_PAD_EIM_D21__GPIO_3_21 | PC,
-		.gp = IMX_GPIO_NR(3, 21)
-	},
-	.sda = {
-		.i2c_mode = MX6_PAD_EIM_D28__I2C1_SDA | PC,
-		.gpio_mode = MX6_PAD_EIM_D28__GPIO_3_28 | PC,
-		.gp = IMX_GPIO_NR(3, 28)
-	}
-};
-#else	// EZ_IMX6_NADIA
+
+#ifdef CONFIG_IMX6_FALINUX	// EZ_IMX6_NADIA
+//nadia & em moduel
 struct i2c_pads_info i2c_pad_info0 = {
 	.scl = {
 		.i2c_mode = MX6_PAD_CSI0_DAT9__I2C1_SCL | PC,
@@ -216,6 +206,19 @@ struct i2c_pads_info i2c_pad_info0 = {
 		.i2c_mode = MX6_PAD_CSI0_DAT8__I2C1_SDA | PC,
 		.gpio_mode = MX6_PAD_CSI0_DAT8__GPIO_5_26 | PC,
 		.gp = IMX_GPIO_NR(5, 26)
+	}
+};
+#else 
+struct i2c_pads_info i2c_pad_info0 = {
+	.scl = {
+		.i2c_mode = MX6_PAD_EIM_D21__I2C1_SCL | PC,
+		.gpio_mode = MX6_PAD_EIM_D21__GPIO_3_21 | PC,
+		.gp = IMX_GPIO_NR(3, 21)
+	},
+	.sda = {
+		.i2c_mode = MX6_PAD_EIM_D28__I2C1_SDA | PC,
+		.gpio_mode = MX6_PAD_EIM_D28__GPIO_3_28 | PC,
+		.gp = IMX_GPIO_NR(3, 28)
 	}
 };
 #endif
@@ -235,20 +238,9 @@ struct i2c_pads_info i2c_pad_info1 = {
 };
 
 /* I2C3, J15 - RGB connector */
-#ifndef CONFIG_EZ_IMX6_NADIA
-struct i2c_pads_info i2c_pad_info2 = {
-	.scl = {
-		.i2c_mode = MX6_PAD_GPIO_5__I2C3_SCL | PC,
-		.gpio_mode = MX6_PAD_GPIO_5__GPIO_1_5 | PC,
-		.gp = IMX_GPIO_NR(1, 5)
-	},
-	.sda = {
-		.i2c_mode = MX6_PAD_GPIO_16__I2C3_SDA | PC,
-		.gpio_mode = MX6_PAD_GPIO_16__GPIO_7_11 | PC,
-		.gp = IMX_GPIO_NR(7, 11)
-	}
-};
-#else
+
+#ifdef CONFIG_IMX6_FALINUX
+//nadia & em
 struct i2c_pads_info i2c_pad_info2 = {
 	.scl = {
 		.i2c_mode = MX6_PAD_GPIO_5__I2C3_SCL | PC,
@@ -259,6 +251,20 @@ struct i2c_pads_info i2c_pad_info2 = {
 		.i2c_mode = MX6_PAD_GPIO_6__I2C3_SDA | PC,
 		.gpio_mode = MX6_PAD_GPIO_6__GPIO_1_6 | PC,
 		.gp = IMX_GPIO_NR(1, 6)
+	}
+};
+#else
+//mx6qsabrelite
+struct i2c_pads_info i2c_pad_info2 = {
+	.scl = {
+		.i2c_mode = MX6_PAD_GPIO_5__I2C3_SCL | PC,
+		.gpio_mode = MX6_PAD_GPIO_5__GPIO_1_5 | PC,
+		.gp = IMX_GPIO_NR(1, 5)
+	},
+	.sda = {
+		.i2c_mode = MX6_PAD_GPIO_16__I2C3_SDA | PC,
+		.gpio_mode = MX6_PAD_GPIO_16__GPIO_7_11 | PC,
+		.gp = IMX_GPIO_NR(7, 11)
 	}
 };
 #endif
@@ -281,11 +287,15 @@ iomux_v3_cfg_t const usdhc4_pads[] = {
 	MX6_PAD_SD4_DAT1__USDHC4_DAT1 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT2__USDHC4_DAT2 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD4_DAT3__USDHC4_DAT3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
+#ifdef CONFIG_IMX6_NADIA
 	MX6_PAD_NANDF_D6__GPIO_2_6    | MUX_PAD_CTRL(NO_PAD_CTRL), /* CD */
+#else
+// em module only
+	MX6_PAD_SD3_DAT7__GPIO_6_17    | MUX_PAD_CTRL(NO_PAD_CTRL), /* CD */  
+#endif
 };
 
-#ifndef CONFIG_EZ_IMX6_NADIA
-
+#ifdef CONFIG_PHY_MICREL_KSZ9021
 iomux_v3_cfg_t const enet_pads1[] = {
 	MX6_PAD_ENET_MDIO__ENET_MDIO		| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	MX6_PAD_ENET_MDC__ENET_MDC		| MUX_PAD_CTRL(ENET_PAD_CTRL),
@@ -320,9 +330,8 @@ iomux_v3_cfg_t const enet_pads2[] = {
 	MX6_PAD_RGMII_RD3__ENET_RGMII_RD3	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	MX6_PAD_RGMII_RX_CTL__RGMII_RX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL),
 };
-
-#else	// EZ_IMX6_NADIA [AR8031]
-
+#endif
+#ifdef CONFIG_PHY_ATHEROS_AR8031  //falinux nadia & imx6 em module 
 iomux_v3_cfg_t const enet_pads[] = {
 	MX6_PAD_ENET_MDIO__ENET_MDIO		| MUX_PAD_CTRL(ENET_PAD_CTRL),
 	MX6_PAD_ENET_MDC__ENET_MDC			| MUX_PAD_CTRL(ENET_PAD_CTRL),
@@ -347,8 +356,7 @@ iomux_v3_cfg_t const enet_pads[] = {
 
 static void setup_iomux_enet(void)
 {
-#ifndef CONFIG_EZ_IMX6_NADIA
-
+#ifdef CONFIG_PHY_MICREL_KSZ9021
 	gpio_direction_output(IMX_GPIO_NR(3, 23), 0);		
 	gpio_direction_output(IMX_GPIO_NR(6, 30), 1);
 	gpio_direction_output(IMX_GPIO_NR(6, 25), 1);
@@ -363,9 +371,8 @@ static void setup_iomux_enet(void)
 	gpio_set_value(IMX_GPIO_NR(3, 23), 1);
 
 	imx_iomux_v3_setup_multiple_pads(enet_pads2, ARRAY_SIZE(enet_pads2));
-
-#else	// EZ_IMX6_NADIA [AR8031]
-
+#endif
+#ifdef CONFIG_PHY_ATHEROS_AR8031 
 	imx_iomux_v3_setup_multiple_pads(enet_pads, ARRAY_SIZE(enet_pads));
 
 	/* Reset AR8031 PHY */
@@ -383,12 +390,8 @@ iomux_v3_cfg_t const usb_pads[] = {
 
 static void setup_iomux_uart(void)
 {
-#ifndef CONFIG_EZ_IMX6_NADIA
 	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
-	imx_iomux_v3_setup_multiple_pads(uart2_pads, ARRAY_SIZE(uart2_pads));
-#else
-	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
-#endif
+	//imx_iomux_v3_setup_multiple_pads(uart2_pads, ARRAY_SIZE(uart2_pads));
 }
 
 #ifdef CONFIG_USB_EHCI_MX6
@@ -407,7 +410,7 @@ int board_ehci_hcd_init(int port)
 
 #ifdef CONFIG_FSL_ESDHC
 
-#ifndef CONFIG_EZ_IMX6_NADIA
+#ifndef CONFIG_IMX6_FALINUX //CONFIG_EZ_IMX6_NADIA
 struct fsl_esdhc_cfg usdhc_cfg[2] = {
 	{USDHC3_BASE_ADDR},
 	{USDHC4_BASE_ADDR},
@@ -422,7 +425,7 @@ int board_mmc_getcd(struct mmc *mmc)
 {
 	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
 	int ret;
-
+#ifdef CONFIG_IMX6_NADIA
 	if (cfg->esdhc_base == USDHC3_BASE_ADDR) {
 		gpio_direction_input(IMX_GPIO_NR(7, 0));
 		ret = !gpio_get_value(IMX_GPIO_NR(7, 0));
@@ -430,7 +433,17 @@ int board_mmc_getcd(struct mmc *mmc)
 		gpio_direction_input(IMX_GPIO_NR(2, 6));
 		ret = !gpio_get_value(IMX_GPIO_NR(2, 6));
 	}
+#else
+//imx6 em module
+	if (cfg->esdhc_base == USDHC4_BASE_ADDR) {
+		gpio_direction_input(IMX_GPIO_NR(6, 17));
+		ret = !gpio_get_value(IMX_GPIO_NR(6, 17));
+	} else {
+		gpio_direction_input(IMX_GPIO_NR(7, 0));
+		ret = !gpio_get_value(IMX_GPIO_NR(7, 0));
+	}
 
+#endif
 	return ret;
 }
 
@@ -439,7 +452,7 @@ int board_mmc_init(bd_t *bis)
 	s32 status = 0;
 	u32 index = 0;
 
-#ifndef CONFIG_EZ_IMX6_NADIA
+#ifndef CONFIG_IMX6_FALINUX //CONFIG_EZ_IMX6_NADIA
 
 	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
 	usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
@@ -465,8 +478,7 @@ int board_mmc_init(bd_t *bis)
 	}
 
 #else	//EZ_IMX6_NADIA
-
-	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
+/*	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
 	usdhc_cfg[0].max_bus_width = 4;
 
 	imx_iomux_v3_setup_multiple_pads(
@@ -474,11 +486,38 @@ int board_mmc_init(bd_t *bis)
 	
 	status |= fsl_esdhc_initialize(bis, &usdhc_cfg[index]);
 
+*/
+	//nadia & em module
+	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
+	usdhc_cfg[0].max_bus_width = 4;
+	usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC3_CLK);
+	usdhc_cfg[1].max_bus_width = 4;
+
+	for (index = 0; index < CONFIG_SYS_FSL_USDHC_NUM; ++index) {
+		switch (index) {
+		case 0:
+			imx_iomux_v3_setup_multiple_pads(
+				usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
+			break;
+		case 1:
+			imx_iomux_v3_setup_multiple_pads(
+				usdhc3_pads, ARRAY_SIZE(usdhc3_pads));
+		       break;
+	       default:
+			printf("Warning: you configured more USDHC controllers"
+			       "(%d) then supported by the board (%d)\n",
+			       index + 1, CONFIG_SYS_FSL_USDHC_NUM);
+			return status;
+		}
+
+		status |= fsl_esdhc_initialize(bis, &usdhc_cfg[index]);
+	}
+
 #endif
 
 	return status;
 }
-#endif
+#endif //CONFIG_FSL_ESDHC
 
 int mx6_rgmii_rework(struct phy_device *phydev)
 {
@@ -505,7 +544,11 @@ int mx6_rgmii_rework(struct phy_device *phydev)
 
 int board_phy_config(struct phy_device *phydev)
 {
-#ifndef CONFIG_EZ_IMX6_NADIA
+#ifdef CONFIG_PHY_ATHEROS_AR8031
+
+	mx6_rgmii_rework(phydev);
+
+#else
 
 	/* min rx data delay */
 	ksz9021_phy_extended_write(phydev,
@@ -517,14 +560,9 @@ int board_phy_config(struct phy_device *phydev)
 	ksz9021_phy_extended_write(phydev,
 			MII_KSZ9021_EXT_RGMII_CLOCK_SKEW, 0xf0f0);
 
-#else	// EZ_IMX6_NADIA [AR8031]				
-
-	mx6_rgmii_rework(phydev);
-
 #endif			
-
-	if (phydev->drv->config)
-		phydev->drv->config(phydev);
+        if (phydev->drv->config)
+                phydev->drv->config(phydev);
 
 	return 0;
 }
@@ -576,11 +614,9 @@ iomux_v3_cfg_t const ecspi1_pads[] = {
 
 void setup_spi(void)
 {
-#ifndef CONFIG_EZ_IMX6_NADIA
 	gpio_direction_output(CONFIG_SF_DEFAULT_CS, 1);
 	imx_iomux_v3_setup_multiple_pads(ecspi1_pads,
 					 ARRAY_SIZE(ecspi1_pads));
-#endif
 }
 #endif
 
@@ -603,10 +639,8 @@ static iomux_v3_cfg_t const button_pads[] = {
 
 static void setup_buttons(void)
 {
-#ifndef CONFIG_EZ_IMX6_NADIA
 	imx_iomux_v3_setup_multiple_pads(button_pads,
 					 ARRAY_SIZE(button_pads));
-#endif
 }
 
 
@@ -941,8 +975,9 @@ static void setup_display(void)
 }
 #endif
 
-
 // [FALINUX - START]---------------------------------------------------------
+#ifdef CONFIG_IMX6_NADIA   //only nadia board
+
 #define DEBUG_STAT		IMX_GPIO_NR(7, 13)	// Slot ID debug
 #define CPU_RUN			IMX_GPIO_NR(4, 5)	// Slot ID cpu
 
@@ -1064,13 +1099,16 @@ void boot_beep(void)
 		set_front_led(1, 0);
 	}
 }
-// [FALINUX -END ]----------------------------------------
-
+#endif
+// [FALINUX -END ]---------------------------------------- 
+// only nadia
 
 int board_early_init_f(void)
 {
 	setup_iomux_uart();
+#ifndef CONFIG_IMX6_FALINUX //CONFIG_IMX6_NADIA
 	setup_buttons();
+#endif
 
 #if defined(CONFIG_VIDEO_IPUV3)
 	setup_display();
@@ -1089,7 +1127,7 @@ int overwrite_console(void)
 
 int board_init(void)
 {
-#ifdef CONFIG_EZ_IMX6_NADIA
+#ifdef CONFIG_IMX6_FALINUX //CONFIG_EZ_IMX6_NADIA
 //	ezimx_set_mx6_cpu_clock_99600();
 #endif
 
@@ -1106,20 +1144,23 @@ int board_init(void)
 #ifdef CONFIG_CMD_SATA
 	setup_sata();
 #endif
-
+#ifdef CONFIG_IMX6_NADIA
 	// [FALINUX]
 	init_nadia_gpio();
 	boot_beep();
 
+#endif
 	return 0;
 }
 
 int checkboard(void)
 {
-#ifndef CONFIG_EZ_IMX6_NADIA
-	puts("Board: MX6Q-Sabre Lite\n");
-#else
+#if defined(CONFIG_IMX6_NADIA)
 	puts("Board: NADIA Server\n");
+#elif defined(CONFIG_IMX6_EM)
+	puts("Board: EM-IMX6DQ\n");
+#else
+	puts("Board: MX6Q-Sabre Lite\n");
 #endif
 	return 0;
 }
@@ -1207,23 +1248,28 @@ static void preboot_keys(void)
 }
 #endif
 
+
 #ifdef CONFIG_CMD_BMODE
 static const struct boot_mode board_boot_modes[] = {
 	/* 4 bit bus width */	
-#ifndef CONFIG_EZ_IMX6_NADIA
+#if defined(CONFIG_IMX6_EM)
+	{"mmc1",	MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},	
+	{"mmc0",	MAKE_CFGVAL(0x40, 0x30, 0x00, 0x00)},
+#elif defined(CONFIG_IMX6_NADIA)
+	{"mmc1",	MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},	
+#else
 	{"mmc0",	MAKE_CFGVAL(0x40, 0x30, 0x00, 0x00)},
 	{"mmc1",	MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},
-#else
-	{"mmc1",	MAKE_CFGVAL(0x40, 0x38, 0x00, 0x00)},	
 #endif
 	{NULL,		0},
+
 };
 #endif
 
 int misc_init_r(void)
 {
 #ifdef CONFIG_PREBOOT
-#ifndef CONFIG_EZ_IMX6_NADIA
+#ifndef CONFIG_IMX6_FALINUX //CONFIG_EZ_IMX6_NADIA
 	preboot_keys();
 #endif
 #endif

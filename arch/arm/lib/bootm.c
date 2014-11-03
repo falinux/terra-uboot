@@ -96,6 +96,10 @@ static void announce_and_cleanup(void)
 {
 	printf("\nStarting kernel ...\n\n");
 
+#ifdef CONFIG_IMX6_NADIA
+	make_wave( 2000, 100 );
+	set_front_led( 1 , 1 );
+#endif
 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
 #ifdef CONFIG_BOOTSTAGE_FDT
 	bootstage_fdt_add_report();

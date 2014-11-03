@@ -249,11 +249,30 @@ int ext4_read_file(const char *filename, void *buf, int offset, int len)
 	}
 
 	file_len = ext4fs_open(filename);
-
+#ifdef CONFIG_IMX6_NADIA
+	//falinux
+        ret = strcmp(filename, "uImage.imx6-3.2");
+#endif
 	if (file_len < 0) {
 		printf("** File not found %s **\n", filename);
+#ifdef CONFIG_IMX6_NADIA
+		//falinux
+                if ( !(ret == 0) ) {
+                        make_wave( 2000, 300 );
+                        msleep(2000),
+                        make_wave( 2000, 300 );
+                        set_front_led( 0, 1 );
+		}
+#endif
 		return -1;
 	}
+#ifdef CONFIG_IMX6_NADIA
+
+	//falinux
+	if( ret == 0 ) {
+		set_front_led( 0, 1 );
+	}
+#endif
 
 	if (len == 0)
 		len = file_len;

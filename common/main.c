@@ -236,10 +236,44 @@ int abortboot(int bootdelay)
 #ifdef CONFIG_MENUPROMPT
 	printf(CONFIG_MENUPROMPT);
 #else
+
+#ifdef CONFIG_IMX6_NADIA
+
+        //falinux added
+        rsw = get_rotary_switch_value();
+
+	if( rsw == 9 ) {
+		char *str = strdup(getenv("bootargs_recv"));
+ 		printf("\n------Recovery Mode-------\n");
+		setenv ("bootargs", str);  /* set or delete definition */
+		if (str != NULL)
+			free (str);
+	} else if( rsw == 8 ) {
+		char *str = strdup(getenv("bootargs_recv"));
+                printf("\n------Factory Mode-------\n");
+                setenv ("bootargs", str);  /* set or delete definition */
+                if (str != NULL)
+                        free (str);
+	} else if( rsw == 7 ) {
+		char *str = strdup(getenv("bootargs_recv"));
+                printf("\n------Reserve Mode-------\n");
+                setenv ("bootargs", str);  /* set or delete definition */
+                if (str != NULL)
+                        free (str);
+	} else {
+		char *str = strdup(getenv("bootargs_sata"));
+                setenv ("bootargs", str);  /* set or delete definition */
+                if (str != NULL)
+                        free (str);
+	}	
+#else
+	//IMX6QEM or mx6qsabrelite
 	char *str = strdup(getenv("bootargs_recv"));
 	setenv ("bootargs", str);  /* set or delete definition */
 	if (str != NULL)
 		free (str);
+
+#endif
 
 	if (bootdelay >= 0)
 		printf("Hit any key to stop autoboot: %2d ", bootdelay);
@@ -506,6 +540,16 @@ void main_loop (void)
 				run_command_list(s, -1, 0);
 				printf(" boot cmd retry ... %d\n", i+1);
 			}
+#ifdef CONFIG_IMX6_NADIA
+
+			// FIXME board boot fail..
+			// buzzer.... 
+			make_wave( 2000, 300 );
+			mdelay(2000);
+			make_wave( 2000, 300 );
+			set_front_led(0, 1);
+#endif
+
 		}
 
 # ifdef CONFIG_AUTOBOOT_KEYED

@@ -37,6 +37,9 @@ uboot 사용법
 		or
 		make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- mx6qem4g_config
 
+	4.5  nadia c-server 보드의 경우 4G 지원 모델
+		make mx6qem4g_nadia_config
+		make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- mx6qem4g__nadia_config
 
 5. 컴파일 방법
 	make u-boot.imx

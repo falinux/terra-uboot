@@ -29,8 +29,25 @@
 
 #define CONFIG_DISPLAY_CPUINFO
 #define CONFIG_DISPLAY_BOARDINFO
-
+/*
+Kernel : arch/arm/tools/mach-types
+mx6q_sabreauto          MACH_MX6Q_SABREAUTO     MX6Q_SABREAUTO          3529
+mx6q_sabrelite          MACH_MX6Q_SABRELITE     MX6Q_SABRELITE          3769
+mx6q_sabresd            MACH_MX6Q_SABRESD       MX6Q_SABRESD            3980
+mx6q_arm2               MACH_MX6Q_ARM2          MX6Q_ARM2               3837
+mx6sl_arm2              MACH_MX6SL_ARM2         MX6SL_ARM2              4091
+mx6q_hdmidongle         MACH_MX6Q_HDMIDONGLE    MX6Q_HDMIDONGLE         4284
+mx6sl_evk               MACH_MX6SL_EVK          MX6SL_EVK               4307
+hb                      MACH_HB                 HB                      4773
+cuboxi                  MACH_CUBOXI             CUBOXI                  4821
+mx6q_terra              MACH_MX6Q_TERRA         MX6Q_TERRA              4831
+*/
+#ifdef CONFIG_IMX6_EM
+#define CONFIG_MACH_TYPE	4831
+#else
 #define CONFIG_MACH_TYPE	3769
+#endif
+
 
 #include <asm/arch/imx-regs.h>
 #include <asm/imx-common/gpio.h>
@@ -53,7 +70,10 @@
 //#define CONFIG_MXC_UART_BASE	       UART2_BASE
 #define CONFIG_MXC_UART_BASE	       UART1_BASE
 #define	CONFIG_BOOTCMD_RETRY_COUNT		20
-#define	CONFIG_EZ_IMX6_NADIA
+//#define	CONFIG_EZ_IMX6_NADIA
+#if defined(CONFIG_IMX6_EM) || defined(CONFIG_IMX6_NADIA)
+#define	CONFIG_IMX6_FALINUX
+#endif
 
 #define CONFIG_CMD_SF
 #ifdef CONFIG_CMD_SF
@@ -77,7 +97,7 @@
 #define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
 //falinux remove and added
-//#define CONFIG_SYS_FSL_USDHC_NUM       2
+//#define CONFIG_SYS_FSL_USDHC_NUM     2
 #define CONFIG_SYS_FSL_USDHC_NUM       1
 
 #define CONFIG_MMC
@@ -115,7 +135,14 @@
 #define CONFIG_DISCOVER_PHY
 #define CONFIG_PHY_ATHEROS
 #define CONFIG_PHY_MICREL
+/*
+ * FALINUX added
+ */
+#ifdef CONFIG_IMX6_FALINUX
+#define CONFIG_PHY_ATHEROS_AR8031
+#else
 #define CONFIG_PHY_MICREL_KSZ9021
+#endif
 
 /* USB Configs */
 #define CONFIG_CMD_USB
@@ -156,9 +183,9 @@
 
 #undef CONFIG_CMD_IMLS
 
-#define CONFIG_BOOTDELAY	       5
-
-#define CONFIG_PREBOOT                 ""
+#define CONFIG_BOOTDELAY	       3
+//
+//#define CONFIG_PREBOOT                 ""
 
 #define CONFIG_LOADADDR			       0x12000000
 #define CONFIG_SYS_TEXT_BASE	       0x17800000
@@ -191,109 +218,42 @@
 	"readramdisk=ext2load mmc 0 $ram_addr /boot/ramdisk-1.0-imx6-24M.gz \0" \
 	
 #endif
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"script=boot.scr\0" \
-	"uimage=uImage\0" \
 	"console=ttymxc0\0" \
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
-	"fdt_file=/dtbs/imx6q-nadia-f1.dtb\0" \
-	"fdt_addr=0x18000000\0" \
+	"loadaddr=0x12000000\0" \
 	"boot_fdt=try\0" \
-	"ram_addr=0x1a000000\0" \
-	"bootcmd=mmc rescan; mmcinfo; ext2ls mmc 0; mmc dev 0; run readkernel; run readramdisk; " \
-			"bootm $loadaddr - $fdt_addr\0" \
-	"bootargs=console=ttymxc0,115200 root=/dev/sda1 rw --no-log " \
-              "rootfstype=ext4 rootdelay=5 \0" \
-        "bootargs_sata=console=ttymxc0,115200 root=/dev/sda1 rw --no-log " \
-              "rootfstype=ext4 rootwait \0" \
-        "bootargs_recv=console=ttymxc0,115200 root=/dev/ram0 rw --no-log " \
-              "initrd=0x1a000000,24M ramdisk=24576 \0" \
-        "bootargs_mmc=console=ttymxc0,115200 root=/dev/mmcblk0p2 rw --no-log " \
-              "rootfstype=ext4 rootdelay=5 \0" \
-	"readkernel=ext2load mmc 0 $loadaddr /boot/uImage.imx6; " \
-		"ext2load mmc 0 $fdt_addr /boot/imx6q-nadia-f1.dtb \0" \
-	"readramdisk=ext2load mmc 0 $ram_addr /boot/ramdisk-1.0-imx6-24M.gz \0" \
-	"upkernel=tftpboot $loadaddr uImage.imx6; " \
-		"tftpboot $fdt_addr imx6q-nadia-f1.dtb; " \
-		"tftpboot $ram_addr ramdisk.imx6.test.gz; " \
-		"bootm $loadaddr - $fdt_addr \0" \
-	"ethaddr=00:ee:ee:12:12:23\0" \
-	"serverip=192.168.6.124\0" \
-	"ipaddr=192.168.3.241\0" \
+	"bootdelay=2\0" \
+	"bootargs=console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootdelay=5 " \
+              "video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
+    "bootargs_sata=setenv bootargs console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootwait " \
+              "video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
+    "bootargs_ram=setenv bootargs console=ttymxc0,115200 root=/dev/ram0 rw --no-log initrd=0x1a000000,16M ramdisk=32768 " \
+              "video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
+    "bootargs_mmc=setenv bootargs console=ttymxc0,115200 root=/dev/mmcblk0p1 rw --no-log rootfstype=ext4 rootdelay=5 " \
+              "video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \                 
+	"ethaddr=00:FA:14:06:03:20\0" \
+	"serverip=192.168.10.132\0" \
+	"ipaddr=192.168.10.248\0" \
 	"netmask=255.255.0.0\0" \
 	"gatewayip=192.168.10.1\0" \
 	"ip_dyn=yes\0" \
-	"mmcdev=0\0" \
-	"mmcpart=0\0" \
-	"mmcroot=/dev/mmcblk0p3 rootwait rw\0" \
-	"mmcargs=setenv bootargs console=${console},${baudrate} " \
-		"root=${mmcroot}\0" \
-	"loadbootscript=" \
-		"ext2load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
-	"bootscript=echo Running bootscript from mmc ...; " \
-		"source\0" \
-	"loaduimage=ext2load mmc ${mmcdev}:${mmcpart} ${loadaddr} ${uimage}\0" \
-	"loadfdt=ext2load mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
-	"mmcboot=echo Booting from mmc ...; " \
-		"run mmcargs; " \
-		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
-			"if run loadfdt; then " \
-				"bootm ${loadaddr} - ${fdt_addr}; " \
-			"else " \
-				"if test ${boot_fdt} = try; then " \
-					"bootm; " \
-				"else " \
-					"echo WARN: Cannot load the DT; " \
-				"fi; " \
-			"fi; " \
-		"else " \
-			"bootm; " \
-		"fi;\0" \
-	"netargs=setenv bootargs console=${console},${baudrate} " \
-		"root=/dev/nfs " \
-	"ip=dhcp nfsroot=${serverip}:${nfsroot},v3,tcp\0" \
-		"netboot=echo Booting from net ...; " \
-		"run netargs; " \
-		"if test ${ip_dyn} = yes; then " \
-			"setenv get_cmd dhcp; " \
-		"else " \
-			"setenv get_cmd tftp; " \
-		"fi; " \
-		"${get_cmd} ${uimage}; " \
-		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
-			"if ${get_cmd} ${fdt_addr} ${fdt_file}; then " \
-				"bootm ${loadaddr} - ${fdt_addr}; " \
-			"else " \
-				"if test ${boot_fdt} = try; then " \
-					"bootm; " \
-				"else " \
-					"echo WARN: Cannot load the DT; " \
-				"fi; " \
-			"fi; " \
-		"else " \
-			"bootm; " \
-		"fi;\0"
-
-#define CONFIG_BOOTCOMMAND \
-	   "mmc dev ${mmcdev};" \
-	   "mmc dev ${mmcdev}; if mmc rescan; then " \
-		   "if run loadbootscript; then " \
-			   "run bootscript; " \
-		   "else " \
-			   "if run loaduimage; then " \
-				   "run mmcboot; " \
-			   "else run netboot; " \
-			   "fi; " \
-		   "fi; " \
-	   "else run netboot; fi"
+    "uboot=tftpboot 0x12000000 u-boot.imx; mmc write 0x12000000 2 800\0" \
+    "kernel=tftpboot 0x12000000 uImage.imx6; mmc write 0x12000000 1000 2800\0" \
+    "ramdisk=tftpboot 0x1a000000 ramdisk.imx6-1.0-32M.gz; mmc write 0x1a000000 4000 8000\0" \
+    "bootram=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x1a000000 4000 8000; bootm 0x12000000\0" \
+    "bootmmc=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; bootm 0x12000000\0" \
+	"bootcmd=run bootargs_ram bootram\0" \
 
 #define CONFIG_ARP_TIMEOUT     200UL
 
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT	       "MX6QSABRELITE U-Boot > "
+//#define CONFIG_SYS_PROMPT	       "MX6QSABRELITE U-Boot > "
+#define CONFIG_SYS_PROMPT	           "MX6QFALinux U-Boot > "
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE	       256
 
@@ -312,13 +272,22 @@
 #define CONFIG_CMDLINE_EDITING
 
 /* Physical Memory Map */
-#ifdef CONFIG_EZ_IMX6_DDR_SIZE_2G
+/*#ifdef CONFIG_EZ_IMX6_DDR_SIZE_2G
 #define CONFIG_NR_DRAM_BANKS    1
 #elif defined CONFIG_EZ_IMX6_DDR_SIZE_4G
 #define CONFIG_NR_DRAM_BANKS    7
 #else
 #define PHYS_SDRAM_SIZE			       (1u * 1024 * 1024 * 1024)
 #endif
+*/
+#ifdef CONFIG_EM_IMX6_DDR_SIZE_2G
+#define CONFIG_NR_DRAM_BANKS            1
+#elif defined CONFIG_EM_IMX6_DDR_SIZE_4G
+#define CONFIG_NR_DRAM_BANKS            7
+#else
+#define PHYS_SDRAM_SIZE                         (1u * 1024 * 1024 * 1024)
+#endif
+
 
 #define PHYS_SDRAM_1        MMDC0_ARB_BASE_ADDR
 #define PHYS_SDRAM_1_SIZE   (2u * 1024 * 1024 * 1024)
