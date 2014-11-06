@@ -28,30 +28,15 @@
 /* #define	DEBUG	*/
 
 #include <common.h>
-#include <watchdog.h>
 #include <command.h>
 #include <fdtdec.h>
-#include <malloc.h>
-#include <version.h>
-#ifdef CONFIG_MODEM_SUPPORT
-#include <malloc.h>		/* for free() prototype */
-#endif
-
-#ifdef CONFIG_SYS_HUSH_PARSER
 #include <hush.h>
-#endif
-
-#ifdef CONFIG_OF_CONTROL
-#include <fdtdec.h>
-#endif
-
-#ifdef CONFIG_OF_LIBFDT
-#include <fdt_support.h>
-#endif /* CONFIG_OF_LIBFDT */
-
-#include <post.h>
-#include <linux/ctype.h>
+#include <malloc.h>
 #include <menu.h>
+#include <post.h>
+#include <version.h>
+#include <watchdog.h>
+#include <linux/ctype.h>
 
 //faliunx
 #include <tgpio_imx6q.h>
@@ -67,13 +52,18 @@ DECLARE_GLOBAL_DATA_PTR;
 void inline __show_boot_progress (int val) {}
 void show_boot_progress (int val) __attribute__((weak, alias("__show_boot_progress")));
 
-#if defined(CONFIG_UPDATE_TFTP)
-int update_tftp (ulong addr);
-#endif /* CONFIG_UPDATE_TFTP */
-
 #define MAX_DELAY_STOP_STR 32
 
-#undef DEBUG_PARSER
+#define DEBUG_PARSER	0	/* set to 1 to debug */
+
+#define debug_parser(fmt, args...)		\
+	debug_cond(DEBUG_PARSER, fmt, ##args)
+
+#ifndef DEBUG_BOOTKEYS
+#define DEBUG_BOOTKEYS 0
+#endif
+#define debug_bootkeys(fmt, args...)		\
+	debug_cond(DEBUG_BOOTKEYS, fmt, ##args)
 
 char        console_buffer[CONFIG_SYS_CBSIZE + 1];	/* console I/O buffer	*/
 
@@ -103,10 +93,7 @@ extern void mdm_init(void); /* defined in board.c */
  */
 #if defined(CONFIG_BOOTDELAY)
 # if defined(CONFIG_AUTOBOOT_KEYED)
-#ifndef CONFIG_MENU
-static inline
-#endif
-int abortboot(int bootdelay)
+static int abortboot_keyed(int bootdelay)
 {
 	int abort = 0;
 	uint64_t etime = endtick(bootdelay);
@@ -162,11 +149,9 @@ int abortboot(int bootdelay)
 		presskey_max = presskey_max > delaykey[i].len ?
 				    presskey_max : delaykey[i].len;
 
-#  if DEBUG_BOOTKEYS
-		printf("%s key:<%s>\n",
-		       delaykey[i].retry ? "delay" : "stop",
-		       delaykey[i].str ? delaykey[i].str : "NULL");
-#  endif
+		debug_bootkeys("%s key:<%s>\n",
+			       delaykey[i].retry ? "delay" : "stop",
+			       delaykey[i].str ? delaykey[i].str : "NULL");
 	}
 
 	/* In order to keep up with incoming data, check timeout only
@@ -191,10 +176,9 @@ int abortboot(int bootdelay)
 			    memcmp (presskey + presskey_len - delaykey[i].len,
 				    delaykey[i].str,
 				    delaykey[i].len) == 0) {
-#  if DEBUG_BOOTKEYS
-				printf("got %skey\n",
-				       delaykey[i].retry ? "delay" : "stop");
-#  endif
+				debug_bootkeys("got %skey\n",
+					       delaykey[i].retry ? "delay" :
+					       "stop");
 
 #  ifdef CONFIG_BOOT_RETRY_TIME
 				/* don't retry auto boot */
@@ -206,10 +190,8 @@ int abortboot(int bootdelay)
 		}
 	} while (!abort && get_ticks() <= etime);
 
-#  if DEBUG_BOOTKEYS
 	if (!abort)
-		puts("key timeout\n");
-#  endif
+		debug_bootkeys("key timeout\n");
 
 #ifdef CONFIG_SILENT_CONSOLE
 	if (abort)
@@ -225,10 +207,7 @@ int abortboot(int bootdelay)
 static int menukey = 0;
 #endif
 
-#ifndef CONFIG_MENU
-static inline
-#endif
-int abortboot(int bootdelay)
+static int abortboot_normal(int bootdelay)
 {
 	int abort = 0;
 	unsigned long ts;
@@ -326,6 +305,15 @@ int abortboot(int bootdelay)
 	return abort;
 }
 # endif	/* CONFIG_AUTOBOOT_KEYED */
+
+static int abortboot(int bootdelay)
+{
+#ifdef CONFIG_AUTOBOOT_KEYED
+	return abortboot_keyed(bootdelay);
+#else
+	return abortboot_normal(bootdelay);
+#endif
+}
 #endif	/* CONFIG_BOOTDELAY */
 
 /*
@@ -393,96 +381,34 @@ static void process_fdt_options(const void *blob)
 }
 #endif /* CONFIG_OF_CONTROL */
 
-
-/****************************************************************************/
-
-void main_loop (void)
+#ifdef CONFIG_BOOTDELAY
+static void process_boot_delay(void)
 {
-#ifndef CONFIG_SYS_HUSH_PARSER
-	static char lastcommand[CONFIG_SYS_CBSIZE] = { 0, };
-	int len;
-	int rc = 1;
-	int flag;
-#endif
-#if defined(CONFIG_BOOTDELAY) && defined(CONFIG_OF_CONTROL)
+#ifdef CONFIG_OF_CONTROL
 	char *env;
 #endif
-#if defined(CONFIG_BOOTDELAY)
 	char *s;
 	int bootdelay;
-#endif
-#ifdef CONFIG_PREBOOT
-	char *p;
-#endif
 #ifdef CONFIG_BOOTCOUNT_LIMIT
 	unsigned long bootcount = 0;
 	unsigned long bootlimit = 0;
-	char *bcs;
-	char bcs_set[16];
 #endif /* CONFIG_BOOTCOUNT_LIMIT */
-
-	bootstage_mark_name(BOOTSTAGE_ID_MAIN_LOOP, "main_loop");
-
-#if defined CONFIG_OF_CONTROL
-       set_working_fdt_addr((void *)gd->fdt_blob);
-#endif /* CONFIG_OF_CONTROL */
 
 #ifdef CONFIG_BOOTCOUNT_LIMIT
 	bootcount = bootcount_load();
 	bootcount++;
 	bootcount_store (bootcount);
-	sprintf (bcs_set, "%lu", bootcount);
-	setenv ("bootcount", bcs_set);
-	bcs = getenv ("bootlimit");
-	bootlimit = bcs ? simple_strtoul (bcs, NULL, 10) : 0;
+	setenv_ulong("bootcount", bootcount);
+	bootlimit = getenv_ulong("bootlimit", 10, 0);
 #endif /* CONFIG_BOOTCOUNT_LIMIT */
 
-#ifdef CONFIG_MODEM_SUPPORT
-	debug ("DEBUG: main_loop:   do_mdm_init=%d\n", do_mdm_init);
-	if (do_mdm_init) {
-		char *str = strdup(getenv("mdm_cmd"));
-		setenv ("preboot", str);  /* set or delete definition */
-		if (str != NULL)
-			free (str);
-		mdm_init(); /* wait for modem connection */
-	}
-#endif  /* CONFIG_MODEM_SUPPORT */
-
-#ifdef CONFIG_VERSION_VARIABLE
-	{
-		setenv ("ver", version_string);  /* set version variable */
-	}
-#endif /* CONFIG_VERSION_VARIABLE */
-
-#ifdef CONFIG_SYS_HUSH_PARSER
-	u_boot_hush_start ();
-#endif
-
-#if defined(CONFIG_HUSH_INIT_VAR)
-	hush_init_var ();
-#endif
-
-#ifdef CONFIG_PREBOOT
-	if ((p = getenv ("preboot")) != NULL) {
-# ifdef CONFIG_AUTOBOOT_KEYED
-		int prev = disable_ctrlc(1);	/* disable Control C checking */
-# endif
-
-		run_command_list(p, -1, 0);
-
-# ifdef CONFIG_AUTOBOOT_KEYED
-		disable_ctrlc(prev);	/* restore Control C checking */
-# endif
-	}
-#endif /* CONFIG_PREBOOT */
-
-#if defined(CONFIG_UPDATE_TFTP)
-	update_tftp (0UL);
-#endif /* CONFIG_UPDATE_TFTP */
-
-#if defined(CONFIG_BOOTDELAY)
 	s = getenv ("bootdelay");
 	bootdelay = s ? (int)simple_strtol(s, NULL, 10) : CONFIG_BOOTDELAY;
+
+#ifdef CONFIG_OF_CONTROL
+	bootdelay = fdtdec_get_config_int(gd->fdt_blob, "bootdelay",
+			bootdelay);
+#endif
 
 	debug ("### main_loop entered: bootdelay=%d\n\n", bootdelay);
 
@@ -529,7 +455,7 @@ void main_loop (void)
 	debug ("### main_loop: bootcmd=\"%s\"\n", s ? s : "<UNDEFINED>");
 
 	if (bootdelay != -1 && s && !abortboot(bootdelay)) {
-# ifdef CONFIG_AUTOBOOT_KEYED
+#ifdef CONFIG_AUTOBOOT_KEYED
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 # endif
 		// falinux boot command retry
@@ -552,20 +478,83 @@ void main_loop (void)
 
 		}
 
-# ifdef CONFIG_AUTOBOOT_KEYED
+#ifdef CONFIG_AUTOBOOT_KEYED
 		disable_ctrlc(prev);	/* restore Control C checking */
-# endif
+#endif
 	}
 		
-# ifdef CONFIG_MENUKEY
+
+#ifdef CONFIG_MENUKEY
 	if (menukey == CONFIG_MENUKEY) {
 		s = getenv("menucmd");
 		if (s)
 			run_command_list(s, -1, 0);
 	}
 #endif /* CONFIG_MENUKEY */
+}
 #endif /* CONFIG_BOOTDELAY */
 
+void main_loop(void)
+{
+#ifndef CONFIG_SYS_HUSH_PARSER
+	static char lastcommand[CONFIG_SYS_CBSIZE] = { 0, };
+	int len;
+	int rc = 1;
+	int flag;
+#endif
+#ifdef CONFIG_PREBOOT
+	char *p;
+#endif
+
+	bootstage_mark_name(BOOTSTAGE_ID_MAIN_LOOP, "main_loop");
+
+#ifdef CONFIG_MODEM_SUPPORT
+	debug("DEBUG: main_loop:   do_mdm_init=%d\n", do_mdm_init);
+	if (do_mdm_init) {
+		char *str = strdup(getenv("mdm_cmd"));
+		setenv("preboot", str);  /* set or delete definition */
+		if (str != NULL)
+			free(str);
+		mdm_init(); /* wait for modem connection */
+	}
+#endif  /* CONFIG_MODEM_SUPPORT */
+
+#ifdef CONFIG_VERSION_VARIABLE
+	{
+		setenv("ver", version_string);  /* set version variable */
+	}
+#endif /* CONFIG_VERSION_VARIABLE */
+
+#ifdef CONFIG_SYS_HUSH_PARSER
+	u_boot_hush_start();
+#endif
+
+#if defined(CONFIG_HUSH_INIT_VAR)
+	hush_init_var();
+#endif
+
+#ifdef CONFIG_PREBOOT
+	p = getenv("preboot");
+	if (p != NULL) {
+# ifdef CONFIG_AUTOBOOT_KEYED
+		int prev = disable_ctrlc(1);	/* disable Control C checking */
+# endif
+
+		run_command_list(p, -1, 0);
+
+# ifdef CONFIG_AUTOBOOT_KEYED
+		disable_ctrlc(prev);	/* restore Control C checking */
+# endif
+	}
+#endif /* CONFIG_PREBOOT */
+
+#if defined(CONFIG_UPDATE_TFTP)
+	update_tftp(0UL);
+#endif /* CONFIG_UPDATE_TFTP */
+
+#ifdef CONFIG_BOOTDELAY
+	process_boot_delay();
+#endif
 	/*
 	 * Main Loop for Monitor Command Processing
 	 */
@@ -1152,20 +1141,20 @@ int readline_into_buffer(const char *const prompt, char *buffer, int timeout)
 		 * Special character handling
 		 */
 		switch (c) {
-		case '\r':				/* Enter		*/
+		case '\r':			/* Enter		*/
 		case '\n':
 			*p = '\0';
 			puts ("\r\n");
-			return (p - p_buf);
+			return p - p_buf;
 
-		case '\0':				/* nul			*/
+		case '\0':			/* nul			*/
 			continue;
 
-		case 0x03:				/* ^C - break		*/
+		case 0x03:			/* ^C - break		*/
 			p_buf[0] = '\0';	/* discard input */
-			return (-1);
+			return -1;
 
-		case 0x15:				/* ^U - erase line	*/
+		case 0x15:			/* ^U - erase line	*/
 			while (col > plen) {
 				puts (erase_seq);
 				--col;
@@ -1174,15 +1163,15 @@ int readline_into_buffer(const char *const prompt, char *buffer, int timeout)
 			n = 0;
 			continue;
 
-		case 0x17:				/* ^W - erase word	*/
+		case 0x17:			/* ^W - erase word	*/
 			p=delete_char(p_buf, p, &col, &n, plen);
 			while ((n > 0) && (*p != ' ')) {
 				p=delete_char(p_buf, p, &col, &n, plen);
 			}
 			continue;
 
-		case 0x08:				/* ^H  - backspace	*/
-		case 0x7F:				/* DEL - backspace	*/
+		case 0x08:			/* ^H  - backspace	*/
+		case 0x7F:			/* DEL - backspace	*/
 			p=delete_char(p_buf, p, &col, &n, plen);
 			continue;
 
@@ -1191,7 +1180,7 @@ int readline_into_buffer(const char *const prompt, char *buffer, int timeout)
 			 * Must be a normal character then
 			 */
 			if (n < CONFIG_SYS_CBSIZE-2) {
-				if (c == '\t') {	/* expand TABs		*/
+				if (c == '\t') {	/* expand TABs */
 #ifdef CONFIG_AUTO_COMPLETE
 					/* if auto completion triggered just continue */
 					*p = '\0';
@@ -1206,7 +1195,7 @@ int readline_into_buffer(const char *const prompt, char *buffer, int timeout)
 					char buf[2];
 
 					/*
-					 * Echo input using puts() to force am
+					 * Echo input using puts() to force an
 					 * LCD flush if we are using an LCD
 					 */
 					++col;
@@ -1264,9 +1253,7 @@ int parse_line (char *line, char *argv[])
 {
 	int nargs = 0;
 
-#ifdef DEBUG_PARSER
-	printf ("parse_line: \"%s\"\n", line);
-#endif
+	debug_parser("parse_line: \"%s\"\n", line);
 	while (nargs < CONFIG_SYS_MAXARGS) {
 
 		/* skip any white space */
@@ -1275,10 +1262,8 @@ int parse_line (char *line, char *argv[])
 
 		if (*line == '\0') {	/* end of line, no more args	*/
 			argv[nargs] = NULL;
-#ifdef DEBUG_PARSER
-		printf ("parse_line: nargs=%d\n", nargs);
-#endif
-			return (nargs);
+			debug_parser("parse_line: nargs=%d\n", nargs);
+			return nargs;
 		}
 
 		argv[nargs++] = line;	/* begin of argument string	*/
@@ -1289,10 +1274,8 @@ int parse_line (char *line, char *argv[])
 
 		if (*line == '\0') {	/* end of line, no more args	*/
 			argv[nargs] = NULL;
-#ifdef DEBUG_PARSER
-		printf ("parse_line: nargs=%d\n", nargs);
-#endif
-			return (nargs);
+			debug_parser("parse_line: nargs=%d\n", nargs);
+			return nargs;
 		}
 
 		*line++ = '\0';		/* terminate current arg	 */
@@ -1300,9 +1283,7 @@ int parse_line (char *line, char *argv[])
 
 	printf ("** Too many args (max. %d) **\n", CONFIG_SYS_MAXARGS);
 
-#ifdef DEBUG_PARSER
-	printf ("parse_line: nargs=%d\n", nargs);
-#endif
+	debug_parser("parse_line: nargs=%d\n", nargs);
 	return (nargs);
 }
 
@@ -1320,12 +1301,10 @@ static void process_macros (const char *input, char *output)
 	/* 1 = waiting for '(' or '{' */
 	/* 2 = waiting for ')' or '}' */
 	/* 3 = waiting for '''  */
-#ifdef DEBUG_PARSER
 	char *output_start = output;
 
-	printf ("[PROCESS_MACROS] INPUT len %d: \"%s\"\n", strlen (input),
-		input);
-#endif
+	debug_parser("[PROCESS_MACROS] INPUT len %zd: \"%s\"\n", strlen(input),
+		     input);
 
 	prev = '\0';		/* previous character   */
 
@@ -1413,10 +1392,8 @@ static void process_macros (const char *input, char *output)
 	else
 		*(output - 1) = 0;
 
-#ifdef DEBUG_PARSER
-	printf ("[PROCESS_MACROS] OUTPUT len %d: \"%s\"\n",
-		strlen (output_start), output_start);
-#endif
+	debug_parser("[PROCESS_MACROS] OUTPUT len %zd: \"%s\"\n",
+		     strlen(output_start), output_start);
 }
 
 /****************************************************************************
@@ -1447,12 +1424,12 @@ static int builtin_run_command(const char *cmd, int flag)
 	int repeatable = 1;
 	int rc = 0;
 
-#ifdef DEBUG_PARSER
-	printf ("[RUN_COMMAND] cmd[%p]=\"", cmd);
-	puts (cmd ? cmd : "NULL");	/* use puts - string may be loooong */
-	puts ("\"\n");
-#endif
-
+	debug_parser("[RUN_COMMAND] cmd[%p]=\"", cmd);
+	if (DEBUG_PARSER) {
+		/* use puts - string may be loooong */
+		puts(cmd ? cmd : "NULL");
+		puts("\"\n");
+	}
 	clear_ctrlc();		/* forget any previous Control C */
 
 	if (!cmd || !*cmd) {
@@ -1470,9 +1447,7 @@ static int builtin_run_command(const char *cmd, int flag)
 	 * repeatable commands
 	 */
 
-#ifdef DEBUG_PARSER
-	printf ("[PROCESS_SEPARATORS] %s\n", cmd);
-#endif
+	debug_parser("[PROCESS_SEPARATORS] %s\n", cmd);
 	while (*str) {
 
 		/*
@@ -1501,9 +1476,7 @@ static int builtin_run_command(const char *cmd, int flag)
 		}
 		else
 			str = sep;	/* no more commands for next pass */
-#ifdef DEBUG_PARSER
-		printf ("token: \"%s\"\n", token);
-#endif
+		debug_parser("token: \"%s\"\n", token);
 
 		/* find macros in this token and replace them */
 		process_macros (token, finaltoken);
