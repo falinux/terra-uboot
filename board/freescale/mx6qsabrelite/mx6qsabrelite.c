@@ -522,7 +522,6 @@ int board_mmc_init(bd_t *bis)
 int mx6_rgmii_rework(struct phy_device *phydev)
 {
 	unsigned short val;
-
 	/* To enable AR8031 ouput a 125MHz clk from CLK_25M */
 	phy_write(phydev, MDIO_DEVAD_NONE, 0xd, 0x7);
 	phy_write(phydev, MDIO_DEVAD_NONE, 0xe, 0x8016);
@@ -621,6 +620,7 @@ void setup_spi(void)
 #endif
 
 
+#ifndef CONFIG_IMX6_FALINUX
 /* Button assignments for J14 */
 static iomux_v3_cfg_t const button_pads[] = {
 	/* Menu */
@@ -636,13 +636,12 @@ static iomux_v3_cfg_t const button_pads[] = {
 	/* Volume Up */
 	MX6_PAD_GPIO_18__GPIO_7_13	| MUX_PAD_CTRL(BUTTON_PAD_CTRL),
 };
-
 static void setup_buttons(void)
 {
 	imx_iomux_v3_setup_multiple_pads(button_pads,
 					 ARRAY_SIZE(button_pads));
 }
-
+#endif
 
 #ifdef CONFIG_CMD_SATA
 int setup_sata(void)
