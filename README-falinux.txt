@@ -54,5 +54,6 @@ uboot 사용법
 
 
 
+
 board/freescale/mx6qsabrelite/README 참조...
 
