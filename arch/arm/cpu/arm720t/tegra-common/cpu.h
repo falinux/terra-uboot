@@ -1,24 +1,8 @@
 /*
- * (C) Copyright 2010-2011
+ * (C) Copyright 2010-2014
  * NVIDIA Corporation <www.nvidia.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <asm/types.h>
 
@@ -27,9 +11,12 @@
 #define IO_STABILIZATION_DELAY	(1000)
 
 #if defined(CONFIG_TEGRA20)
-#define NVBL_PLLP_KHZ	(216000)
-#elif defined(CONFIG_TEGRA30) || defined(CONFIG_TEGRA114)
-#define NVBL_PLLP_KHZ	(408000)
+#define NVBL_PLLP_KHZ	216000
+#define CSITE_KHZ	144000
+#elif defined(CONFIG_TEGRA30) || defined(CONFIG_TEGRA114) || \
+	defined(CONFIG_TEGRA124)
+#define NVBL_PLLP_KHZ	408000
+#define CSITE_KHZ	204000
 #else
 #error "Unknown Tegra chip!"
 #endif
@@ -84,3 +71,4 @@ int tegra_get_chip(void);
 int tegra_get_sku_info(void);
 int tegra_get_chip_sku(void);
 void adjust_pllp_out_freqs(void);
+void pmic_enable_cpu_vdd(void);

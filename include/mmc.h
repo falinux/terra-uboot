@@ -4,23 +4,7 @@
  *
  * Based (loosely) on the Linux code
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef _MMC_H_
@@ -164,7 +148,9 @@
  * EXT_CSD fields
  */
 #define EXT_CSD_GP_SIZE_MULT		143	/* R/W */
+#define EXT_CSD_PARTITIONS_ATTRIBUTE	156	/* R/W */
 #define EXT_CSD_PARTITIONING_SUPPORT	160	/* RO */
+#define EXT_CSD_RST_N_FUNCTION		162	/* R/W */
 #define EXT_CSD_RPMB_MULT		168	/* RO */
 #define EXT_CSD_ERASE_GROUP_DEF		175	/* R/W */
 #define EXT_CSD_BOOT_BUS_WIDTH		177
@@ -202,6 +188,9 @@
 #define EXT_CSD_BOOT_PART_NUM(x)	(x << 3)
 #define EXT_CSD_PARTITION_ACCESS(x)	(x << 0)
 
+#define EXT_CSD_BOOT_BUS_WIDTH_MODE(x)	(x << 3)
+#define EXT_CSD_BOOT_BUS_WIDTH_RESET(x)	(x << 2)
+#define EXT_CSD_BOOT_BUS_WIDTH_WIDTH(x)	(x)
 
 #define R1_ILLEGAL_COMMAND		(1 << 22)
 #define R1_APP_CMD			(1 << 5)
@@ -226,6 +215,7 @@
 #define MMCPART_NOAVAILABLE	(0xff)
 #define PART_ACCESS_MASK	(0x7)
 #define PART_SUPPORT		(0x1)
+#define PART_ENH_ATTRIB		(0x1f)
 
 /* Maximum block size for MMC */
 #define MMC_MAX_BLOCK_LEN	512
@@ -261,21 +251,43 @@ struct mmc_data {
 	uint blocksize;
 };
 
-struct mmc {
-	struct list_head link;
-	char name[32];
-	void *priv;
+/* forward decl. */
+struct mmc;
+
+struct mmc_ops {
+	int (*send_cmd)(struct mmc *mmc,
+			struct mmc_cmd *cmd, struct mmc_data *data);
+	void (*set_ios)(struct mmc *mmc);
+	int (*init)(struct mmc *mmc);
+	int (*getcd)(struct mmc *mmc);
+	int (*getwp)(struct mmc *mmc);
+};
+
+struct mmc_config {
+	const char *name;
+	const struct mmc_ops *ops;
+	uint host_caps;
 	uint voltages;
-	uint version;
-	uint has_init;
 	uint f_min;
 	uint f_max;
+	uint b_max;
+	unsigned char part_type;
+};
+
+/* TODO struct mmc should be in mmc_private but it's hard to fix right now */
+struct mmc {
+	struct list_head link;
+	const struct mmc_config *cfg;	/* provided configuration */
+	uint version;
+	void *priv;
+	uint has_init;
 	int high_capacity;
 	uint bus_width;
 	uint clock;
 	uint card_caps;
-	uint host_caps;
 	uint ocr;
+	uint dsr;
+	uint dsr_imp;
 	uint scr[2];
 	uint csd[4];
 	uint cid[4];
@@ -292,13 +304,6 @@ struct mmc {
 	u64 capacity_rpmb;
 	u64 capacity_gp[4];
 	block_dev_desc_t block_dev;
-	int (*send_cmd)(struct mmc *mmc,
-			struct mmc_cmd *cmd, struct mmc_data *data);
-	void (*set_ios)(struct mmc *mmc);
-	int (*init)(struct mmc *mmc);
-	int (*getcd)(struct mmc *mmc);
-	int (*getwp)(struct mmc *mmc);
-	uint b_max;
 	char op_cond_pending;	/* 1 if we are waiting on an op_cond command */
 	char init_in_progress;	/* 1 if we have done mmc_start_init() */
 	char preinit;		/* start init as early as possible */
@@ -306,6 +311,8 @@ struct mmc {
 };
 
 int mmc_register(struct mmc *mmc);
+struct mmc *mmc_create(const struct mmc_config *cfg, void *priv);
+void mmc_destroy(struct mmc *mmc);
 int mmc_initialize(bd_t *bis);
 int mmc_init(struct mmc *mmc);
 int mmc_read(struct mmc *mmc, u64 src, uchar *dst, int size);
@@ -318,12 +325,16 @@ int board_mmc_getcd(struct mmc *mmc);
 int mmc_switch_part(int dev_num, unsigned int part_num);
 int mmc_getcd(struct mmc *mmc);
 int mmc_getwp(struct mmc *mmc);
-void spl_mmc_load(void) __noreturn;
+int mmc_set_dsr(struct mmc *mmc, u16 val);
 /* Function to change the size of boot partition and rpmb partitions */
 int mmc_boot_partition_size_change(struct mmc *mmc, unsigned long bootsize,
 					unsigned long rpmbsize);
-/* Function to send commands to open/close the specified boot partition */
-int mmc_boot_part_access(struct mmc *mmc, u8 ack, u8 part_num, u8 access);
+/* Function to modify the PARTITION_CONFIG field of EXT_CSD */
+int mmc_set_part_conf(struct mmc *mmc, u8 ack, u8 part_num, u8 access);
+/* Function to modify the BOOT_BUS_WIDTH field of EXT_CSD */
+int mmc_set_boot_bus_width(struct mmc *mmc, u8 width, u8 reset, u8 mode);
+/* Function to modify the RST_n_FUNCTION field of EXT_CSD */
+int mmc_set_rst_n_function(struct mmc *mmc, u8 enable);
 
 /**
  * Start device initialization and return immediately; it does not block on
@@ -351,10 +362,21 @@ int mmc_start_init(struct mmc *mmc);
 void mmc_set_preinit(struct mmc *mmc, int preinit);
 
 #ifdef CONFIG_GENERIC_MMC
-#define mmc_host_is_spi(mmc)	((mmc)->host_caps & MMC_MODE_SPI)
+#ifdef CONFIG_MMC_SPI
+#define mmc_host_is_spi(mmc)	((mmc)->cfg->host_caps & MMC_MODE_SPI)
+#else
+#define mmc_host_is_spi(mmc)	0
+#endif
 struct mmc *mmc_spi_init(uint bus, uint cs, uint speed, uint mode);
 #else
 int mmc_legacy_init(int verbose);
+#endif
+
+int board_mmc_init(bd_t *bis);
+
+/* Set block count limit because of 16 bit register limit on some hardware*/
+#ifndef CONFIG_SYS_MMC_MAX_BLK_COUNT
+#define CONFIG_SYS_MMC_MAX_BLK_COUNT 65535
 #endif
 
 #endif /* _MMC_H_ */

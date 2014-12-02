@@ -2,23 +2,7 @@
  * (C) Copyright 2010-2012
  * NVIDIA Corporation <www.nvidia.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __TEGRA_COMMON_POST_H
@@ -82,27 +66,63 @@
 #define BOOT_TARGETS_DHCP ""
 #endif
 
+#if defined(CONFIG_CMD_DHCP) && defined(CONFIG_CMD_PXE)
+#define BOOTCMDS_PXE \
+	"bootcmd_pxe=" \
+		BOOTCMD_INIT_USB \
+		"dhcp; " \
+		"if pxe get; then " \
+			"pxe boot; " \
+		"fi\0"
+#define BOOT_TARGETS_PXE "pxe"
+#else
+#define BOOTCMDS_PXE ""
+#define BOOT_TARGETS_PXE ""
+#endif
+
 #define BOOTCMDS_COMMON \
 	"rootpart=1\0" \
 	\
+	"do_script_boot="                                                 \
+		"load ${devtype} ${devnum}:${rootpart} "                  \
+			"${scriptaddr} ${prefix}${script}; "              \
+		"source ${scriptaddr}\0"                                  \
+	\
 	"script_boot="                                                    \
-		"if load ${devtype} ${devnum}:${rootpart} "               \
-				"${scriptaddr} ${prefix}${script}; then " \
-			"echo ${script} found! Executing ...;"            \
-			"source ${scriptaddr};"                           \
-		"fi;\0"                                                   \
+		"for script in ${boot_scripts}; do "                      \
+			"if test -e ${devtype} ${devnum}:${rootpart} "    \
+					"${prefix}${script}; then "       \
+				"echo Found U-Boot script "               \
+					"${prefix}${script}; "            \
+				"run do_script_boot; "                    \
+				"echo SCRIPT FAILED: continuing...; "     \
+			"fi; "                                            \
+		"done\0"                                                  \
+	\
+	"do_sysboot_boot="                                                \
+		"sysboot ${devtype} ${devnum}:${rootpart} any "           \
+			"${scriptaddr} ${prefix}extlinux.conf\0"          \
+	\
+	"sysboot_boot="                                                   \
+		"if test -e ${devtype} ${devnum}:${rootpart} "            \
+				"${prefix}extlinux.conf; then "           \
+			"echo Found extlinux config "                     \
+				"${prefix}extlinux.conf; "                \
+			"run do_sysboot_boot; "                           \
+			"echo SCRIPT FAILED: continuing...; "             \
+		"fi\0"                                                    \
 	\
 	"scan_boot="                                                      \
 		"echo Scanning ${devtype} ${devnum}...; "                 \
 		"for prefix in ${boot_prefixes}; do "                     \
-			"for script in ${boot_scripts}; do "              \
-				"run script_boot; "                       \
-			"done; "                                          \
-		"done;\0"                                                 \
+			"run sysboot_boot; "                              \
+			"run script_boot; "                               \
+		"done\0"                                                  \
 	\
 	"boot_targets=" \
 		BOOT_TARGETS_MMC " " \
 		BOOT_TARGETS_USB " " \
+		BOOT_TARGETS_PXE " " \
 		BOOT_TARGETS_DHCP " " \
 		"\0" \
 	\
@@ -112,9 +132,11 @@
 	\
 	BOOTCMDS_MMC \
 	BOOTCMDS_USB \
-	BOOTCMDS_DHCP
+	BOOTCMDS_DHCP \
+	BOOTCMDS_PXE
 
 #define CONFIG_BOOTCOMMAND \
+	"set usb_need_init; " \
 	"for target in ${boot_targets}; do run bootcmd_${target}; done"
 
 #endif
@@ -145,10 +167,15 @@
 	"stderr=serial" STDOUT_LCD "\0" \
 	""
 
+#ifndef BOARD_EXTRA_ENV_SETTINGS
+#define BOARD_EXTRA_ENV_SETTINGS
+#endif
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	TEGRA_DEVICE_SETTINGS \
 	MEM_LAYOUT_ENV_SETTINGS \
-	BOOTCMDS_COMMON
+	BOOTCMDS_COMMON \
+	BOARD_EXTRA_ENV_SETTINGS
 
 #if defined(CONFIG_TEGRA20_SFLASH) || defined(CONFIG_TEGRA20_SLINK) || defined(CONFIG_TEGRA114_SPI)
 #define CONFIG_FDT_SPI
@@ -165,8 +192,8 @@
 #endif
 
 /* remove I2C support */
-#ifdef CONFIG_TEGRA_I2C
-#undef CONFIG_TEGRA_I2C
+#ifdef CONFIG_SYS_I2C_TEGRA
+#undef CONFIG_SYS_I2C_TEGRA
 #endif
 #ifdef CONFIG_CMD_I2C
 #undef CONFIG_CMD_I2C

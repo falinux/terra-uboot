@@ -18,19 +18,7 @@
  *
  * ext4write : Based on generic ext4 protocol.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 
@@ -52,18 +40,18 @@ static void ext4fs_update(void)
 	/* update block groups */
 	for (i = 0; i < fs->no_blkgrp; i++) {
 		fs->bgd[i].bg_checksum = ext4fs_checksum_update(i);
-		put_ext4((uint64_t)(fs->bgd[i].block_id * fs->blksz),
+		put_ext4((uint64_t)((uint64_t)fs->bgd[i].block_id * (uint64_t)fs->blksz),
 			 fs->blk_bmaps[i], fs->blksz);
 	}
 
 	/* update inode table groups */
 	for (i = 0; i < fs->no_blkgrp; i++) {
-		put_ext4((uint64_t) (fs->bgd[i].inode_id * fs->blksz),
+		put_ext4((uint64_t) ((uint64_t)fs->bgd[i].inode_id * (uint64_t)fs->blksz),
 			 fs->inode_bmaps[i], fs->blksz);
 	}
 
 	/* update the block group descriptor table */
-	put_ext4((uint64_t)(fs->gdtable_blkno * fs->blksz),
+	put_ext4((uint64_t)((uint64_t)fs->gdtable_blkno * (uint64_t)fs->blksz),
 		 (struct ext2_block_group *)fs->gdtable,
 		 (fs->blksz * fs->no_blk_pergdt));
 
@@ -721,7 +709,7 @@ void ext4fs_deinit(void)
 			       temp_buff);
 		jsb = (struct journal_superblock_t *)temp_buff;
 		jsb->s_start = cpu_to_be32(0);
-		put_ext4((uint64_t) (blknr * fs->blksz),
+		put_ext4((uint64_t) ((uint64_t)blknr * (uint64_t)fs->blksz),
 			 (struct journal_superblock_t *)temp_buff, fs->blksz);
 		free(temp_buff);
 	}
@@ -805,7 +793,7 @@ static int ext4fs_write_file(struct ext2_inode *file_inode,
 					delayed_next += blockend >> log2blksz;
 				} else {	/* spill */
 					put_ext4((uint64_t)
-						 (delayed_start << log2blksz),
+						 ((uint64_t)delayed_start << log2blksz),
 						 delayed_buf,
 						 (uint32_t) delayed_extent);
 					previous_block_number = blknr;
@@ -826,7 +814,7 @@ static int ext4fs_write_file(struct ext2_inode *file_inode,
 		} else {
 			if (previous_block_number != -1) {
 				/* spill */
-				put_ext4((uint64_t) (delayed_start <<
+				put_ext4((uint64_t) ((uint64_t)delayed_start <<
 						     log2blksz),
 					 delayed_buf,
 					 (uint32_t) delayed_extent);
@@ -838,7 +826,7 @@ static int ext4fs_write_file(struct ext2_inode *file_inode,
 	}
 	if (previous_block_number != -1) {
 		/* spill */
-		put_ext4((uint64_t) (delayed_start << log2blksz),
+		put_ext4((uint64_t) ((uint64_t)delayed_start << log2blksz),
 			 delayed_buf, (uint32_t) delayed_extent);
 		previous_block_number = -1;
 	}

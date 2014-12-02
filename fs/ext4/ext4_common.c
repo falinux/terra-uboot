@@ -16,19 +16,7 @@
  *
  * ext4write : Based on generic ext4 protocol.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -457,9 +445,9 @@ restart:
 					goto fail;
 				}
 				put_ext4(((uint64_t)
-					  (g_parent_inode->b.
+					  ((uint64_t)g_parent_inode->b.
 					   blocks.dir_blocks[direct_blk_idx] *
-					   fs->blksz)), zero_buffer, fs->blksz);
+					   (uint64_t)fs->blksz)), zero_buffer, fs->blksz);
 				g_parent_inode->size =
 				    g_parent_inode->size + fs->blksz;
 				g_parent_inode->blockcnt =
@@ -876,8 +864,8 @@ long int ext4fs_get_new_blk_no(void)
 		for (i = 0; i < fs->no_blkgrp; i++) {
 			if (bgd[i].free_blocks) {
 				if (bgd[i].bg_flags & EXT4_BG_BLOCK_UNINIT) {
-					put_ext4(((uint64_t) (bgd[i].block_id *
-							      fs->blksz)),
+					put_ext4(((uint64_t) ((uint64_t)bgd[i].block_id *
+							      (uint64_t)fs->blksz)),
 						 zero_buffer, fs->blksz);
 					bgd[i].bg_flags =
 					    bgd[i].
@@ -941,8 +929,8 @@ restart:
 
 		if (bgd[bg_idx].bg_flags & EXT4_BG_BLOCK_UNINIT) {
 			memset(zero_buffer, '\0', fs->blksz);
-			put_ext4(((uint64_t) (bgd[bg_idx].block_id *
-					fs->blksz)), zero_buffer, fs->blksz);
+			put_ext4(((uint64_t) ((uint64_t)bgd[bg_idx].block_id *
+					(uint64_t)fs->blksz)), zero_buffer, fs->blksz);
 			memcpy(fs->blk_bmaps[bg_idx], zero_buffer, fs->blksz);
 			bgd[bg_idx].bg_flags = bgd[bg_idx].bg_flags &
 						~EXT4_BG_BLOCK_UNINIT;
@@ -1008,8 +996,8 @@ int ext4fs_get_new_inode_no(void)
 						bgd[i].free_inodes;
 				if (bgd[i].bg_flags & EXT4_BG_INODE_UNINIT) {
 					put_ext4(((uint64_t)
-						  (bgd[i].inode_id *
-							fs->blksz)),
+						  ((uint64_t)bgd[i].inode_id *
+							(uint64_t)fs->blksz)),
 						 zero_buffer, fs->blksz);
 					bgd[i].bg_flags = bgd[i].bg_flags &
 							~EXT4_BG_INODE_UNINIT;
@@ -1049,8 +1037,8 @@ restart:
 		ibmap_idx = fs->curr_inode_no / inodes_per_grp;
 		if (bgd[ibmap_idx].bg_flags & EXT4_BG_INODE_UNINIT) {
 			memset(zero_buffer, '\0', fs->blksz);
-			put_ext4(((uint64_t) (bgd[ibmap_idx].inode_id *
-					      fs->blksz)), zero_buffer,
+			put_ext4(((uint64_t) ((uint64_t)bgd[ibmap_idx].inode_id *
+					      (uint64_t)fs->blksz)), zero_buffer,
 				 fs->blksz);
 			bgd[ibmap_idx].bg_flags =
 			    bgd[ibmap_idx].bg_flags & ~EXT4_BG_INODE_UNINIT;
@@ -1155,7 +1143,7 @@ static void alloc_single_indirect_block(struct ext2_inode *file_inode,
 		}
 
 		/* write the block to disk */
-		put_ext4(((uint64_t) (si_blockno * fs->blksz)),
+		put_ext4(((uint64_t) ((uint64_t)si_blockno * (uint64_t)fs->blksz)),
 			 si_start_addr, fs->blksz);
 		file_inode->b.blocks.indir_block = si_blockno;
 	}
@@ -1254,7 +1242,7 @@ static void alloc_double_indirect_block(struct ext2_inode *file_inode,
 					break;
 			}
 			/* write the block  table */
-			put_ext4(((uint64_t) (di_blockno_child * fs->blksz)),
+			put_ext4(((uint64_t) ((uint64_t)di_blockno_child * (uint64_t)fs->blksz)),
 				 di_child_buff_start, fs->blksz);
 			free(di_child_buff_start);
 			di_child_buff_start = NULL;
@@ -1262,7 +1250,7 @@ static void alloc_double_indirect_block(struct ext2_inode *file_inode,
 			if (*total_remaining_blocks == 0)
 				break;
 		}
-		put_ext4(((uint64_t) (di_blockno_parent * fs->blksz)),
+		put_ext4(((uint64_t) ((uint64_t)di_blockno_parent * (uint64_t)fs->blksz)),
 			 di_block_start_addr, fs->blksz);
 		file_inode->b.blocks.double_indir_block = di_blockno_parent;
 	}
@@ -1360,8 +1348,8 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 						break;
 				}
 				/* write the child block */
-				put_ext4(((uint64_t) (ti_child_blockno *
-						      fs->blksz)),
+				put_ext4(((uint64_t) ((uint64_t)ti_child_blockno *
+						      (uint64_t)fs->blksz)),
 					 ti_cbuff_start_addr, fs->blksz);
 				free(ti_cbuff_start_addr);
 
@@ -1369,7 +1357,7 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 					break;
 			}
 			/* write the parent block */
-			put_ext4(((uint64_t) (ti_parent_blockno * fs->blksz)),
+			put_ext4(((uint64_t) ((uint64_t)ti_parent_blockno * (uint64_t)fs->blksz)),
 				 ti_pbuff_start_addr, fs->blksz);
 			free(ti_pbuff_start_addr);
 
@@ -1377,7 +1365,7 @@ static void alloc_triple_indirect_block(struct ext2_inode *file_inode,
 				break;
 		}
 		/* write the grand parent block */
-		put_ext4(((uint64_t) (ti_gp_blockno * fs->blksz)),
+		put_ext4(((uint64_t) ((uint64_t)ti_gp_blockno * (uint64_t)fs->blksz)),
 			 ti_gp_buff_start_addr, fs->blksz);
 		file_inode->b.blocks.triple_indir_block = ti_gp_blockno;
 	}
@@ -1426,7 +1414,7 @@ static struct ext4_extent_header *ext4fs_get_extent_block
 {
 	struct ext4_extent_idx *index;
 	unsigned long long block;
-	struct ext_filesystem *fs = get_fs();
+	int blksz = EXT2_BLOCK_SIZE(data);
 	int i;
 
 	while (1) {
@@ -1442,7 +1430,7 @@ static struct ext4_extent_header *ext4fs_get_extent_block
 			i++;
 			if (i >= le16_to_cpu(ext_block->eh_entries))
 				break;
-		} while (fileblock > le32_to_cpu(index[i].ei_block));
+		} while (fileblock >= le32_to_cpu(index[i].ei_block));
 
 		if (--i < 0)
 			return 0;
@@ -1450,7 +1438,7 @@ static struct ext4_extent_header *ext4fs_get_extent_block
 		block = le16_to_cpu(index[i].ei_leaf_hi);
 		block = (block << 32) + le32_to_cpu(index[i].ei_leaf_lo);
 
-		if (ext4fs_devread((lbaint_t)block << log2_blksz, 0, fs->blksz,
+		if (ext4fs_devread((lbaint_t)block << log2_blksz, 0, blksz,
 				   buf))
 			ext_block = (struct ext4_extent_header *)buf;
 		else

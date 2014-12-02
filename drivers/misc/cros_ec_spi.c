@@ -2,23 +2,8 @@
  * Chromium OS cros_ec driver - SPI interface
  *
  * Copyright (c) 2012 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -31,6 +16,30 @@
 #include <common.h>
 #include <cros_ec.h>
 #include <spi.h>
+
+int cros_ec_spi_packet(struct cros_ec_dev *dev, int out_bytes, int in_bytes)
+{
+	int rv;
+
+	/* Do the transfer */
+	if (spi_claim_bus(dev->spi)) {
+		debug("%s: Cannot claim SPI bus\n", __func__);
+		return -1;
+	}
+
+	rv = spi_xfer(dev->spi, max(out_bytes, in_bytes) * 8,
+		      dev->dout, dev->din,
+		      SPI_XFER_BEGIN | SPI_XFER_END);
+
+	spi_release_bus(dev->spi);
+
+	if (rv) {
+		debug("%s: Cannot complete SPI transfer\n", __func__);
+		return -1;
+	}
+
+	return in_bytes;
+}
 
 /**
  * Send a command to a LPC CROS_EC device and return the reply.
@@ -56,6 +65,12 @@ int cros_ec_spi_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
 	uint8_t *p;
 	int csum, len;
 	int rv;
+
+	if (dev->protocol_version != 2) {
+		debug("%s: Unsupported EC protcol version %d\n",
+		      __func__, dev->protocol_version);
+		return -1;
+	}
 
 	/*
 	 * Sanity-check input size to make sure it plus transaction overhead
@@ -150,8 +165,7 @@ int cros_ec_spi_decode_fdt(struct cros_ec_dev *dev, const void *blob)
  */
 int cros_ec_spi_init(struct cros_ec_dev *dev, const void *blob)
 {
-	dev->spi = spi_setup_slave_fdt(blob, dev->parent_node,
-				       dev->cs, dev->max_frequency, 0);
+	dev->spi = spi_setup_slave_fdt(blob, dev->parent_node, dev->node);
 	if (!dev->spi) {
 		debug("%s: Could not setup SPI slave\n", __func__);
 		return -1;

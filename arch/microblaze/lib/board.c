@@ -5,23 +5,7 @@
  * Michal  SIMEK <monstr@monstr.eu>
  * Yasushi SHOJI <yashi@atmark-techno.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -32,12 +16,19 @@
 #include <stdio_dev.h>
 #include <serial.h>
 #include <net.h>
+#include <spi.h>
 #include <linux/compiler.h>
 #include <asm/processor.h>
 #include <asm/microblaze_intc.h>
 #include <fdtdec.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+static int display_banner(void)
+{
+	printf("\n\n%s\n\n", version_string);
+	return 0;
+}
 
 /*
  * All attempts to come up with a "common" initialization sequence
@@ -59,12 +50,14 @@ init_fnc_t *init_sequence[] = {
 	fdtdec_check_fdt,
 #endif
 	serial_init,
+#ifndef CONFIG_SPL_BUILD
 	console_init_f,
-	interrupts_init,
-#ifdef CONFIG_XILINX_TB_WATCHDOG
-	hw_watchdog_init,
 #endif
+	display_banner,
+#ifndef CONFIG_SPL_BUILD
+	interrupts_init,
 	timer_init,
+#endif
 	NULL,
 };
 
@@ -77,7 +70,7 @@ void board_init_f(ulong not_used)
 	gd = (gd_t *)(CONFIG_SYS_SDRAM_BASE + CONFIG_SYS_GBL_DATA_OFFSET);
 	bd = (bd_t *)(CONFIG_SYS_SDRAM_BASE + CONFIG_SYS_GBL_DATA_OFFSET
 						- GENERATED_BD_INFO_SIZE);
-#if defined(CONFIG_CMD_FLASH)
+#if defined(CONFIG_CMD_FLASH) && !defined(CONFIG_SPL_BUILD)
 	ulong flash_size = 0;
 #endif
 	asm ("nop");	/* FIXME gd is not initialize - wait */
@@ -94,14 +87,17 @@ void board_init_f(ulong not_used)
 
 #ifdef CONFIG_OF_EMBED
 	/* Get a pointer to the FDT */
-	gd->fdt_blob = _binary_dt_dtb_start;
+	gd->fdt_blob = __dtb_dt_begin;
 #elif defined CONFIG_OF_SEPARATE
 	/* FDT is at end of image */
 	gd->fdt_blob = (void *)__end;
 #endif
+
+#ifndef CONFIG_SPL_BUILD
 	/* Allow the early environment to override the fdt address */
 	gd->fdt_blob = (void *)getenv_ulong("fdtcontroladdr", 16,
 						(uintptr_t)gd->fdt_blob);
+#endif
 
 	/*
 	 * The Malloc area is immediately below the monitor copy in DRAM
@@ -112,12 +108,16 @@ void board_init_f(ulong not_used)
 
 	serial_initialize();
 
+#ifdef CONFIG_XILINX_TB_WATCHDOG
+	hw_watchdog_init();
+#endif
 	for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {
 		WATCHDOG_RESET();
 		if ((*init_fnc_ptr) () != 0)
 			hang();
 	}
 
+#ifndef CONFIG_SPL_BUILD
 #ifdef CONFIG_OF_CONTROL
 	/* For now, put this check after the console is ready */
 	if (fdtdec_prepare_fdt())
@@ -163,6 +163,10 @@ void board_init_f(ulong not_used)
 	}
 #endif
 
+#ifdef CONFIG_SPI
+	spi_init();
+#endif
+
 	/* relocate environment function pointers etc. */
 	env_relocate();
 
@@ -194,4 +198,5 @@ void board_init_f(ulong not_used)
 		WATCHDOG_RESET();
 		main_loop();
 	}
+#endif /* CONFIG_SPL_BUILD */
 }

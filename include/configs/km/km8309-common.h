@@ -4,10 +4,7 @@
  *
  * Based on km8321-common.h, see respective copyright notice for credits
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __CONFIG_KM8309_COMMON_H
@@ -18,7 +15,6 @@
  */
 #define CONFIG_E300		1	/* E300 family */
 #define CONFIG_QE		1	/* Has QE */
-#define CONFIG_MPC83xx		1	/* MPC83xx family */
 #define CONFIG_MPC830x		1	/* MPC830x family */
 #define CONFIG_MPC8309		1	/* MPC8309 CPU specific */
 

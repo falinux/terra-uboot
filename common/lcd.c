@@ -4,23 +4,7 @@
  * (C) Copyright 2001-2002
  * Wolfgang Denk, DENX Software Engineering -- wd@denx.de
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /************************************************************************/
@@ -42,8 +26,10 @@
 #endif
 #include <lcd.h>
 #include <watchdog.h>
-
+#include <asm/unaligned.h>
 #include <splash.h>
+#include <asm/io.h>
+#include <asm/unaligned.h>
 
 #if defined(CONFIG_CPU_PXA25X) || defined(CONFIG_CPU_PXA27X) || \
 	defined(CONFIG_CPU_MONAHANS)
@@ -67,7 +53,6 @@
 /* ** FONT DATA								*/
 /************************************************************************/
 #include <video_font.h>		/* Get font data, width and height	*/
-#include <video_font_data.h>
 
 /************************************************************************/
 /* ** LOGO DATA								*/
@@ -78,6 +63,10 @@
 # if (CONSOLE_COLOR_WHITE >= BMP_LOGO_OFFSET) && (LCD_BPP != LCD_COLOR16)
 #  error Default Color Map overlaps with Logo Color Map
 # endif
+#endif
+
+#ifdef CONFIG_SANDBOX
+#include <asm/sdl.h>
 #endif
 
 #ifndef CONFIG_LCD_ALIGNMENT
@@ -161,6 +150,13 @@ void lcd_sync(void)
 	if (lcd_flush_dcache)
 		flush_dcache_range((u32)lcd_base,
 			(u32)(lcd_base + lcd_get_size(&line_length)));
+#elif defined(CONFIG_SANDBOX) && defined(CONFIG_VIDEO_SANDBOX_SDL)
+	static ulong last_sync;
+
+	if (get_timer(last_sync) > 10) {
+		sandbox_sdl_sync(lcd_base);
+		last_sync = get_timer(0);
+	}
 #endif
 }
 
@@ -403,8 +399,13 @@ static void test_pattern(void)
 /************************************************************************/
 /* ** GENERIC Initialization Routines					*/
 /************************************************************************/
-
-int lcd_get_size(int *line_length)
+/*
+ * With most lcd drivers the line length is set up
+ * by calculating it from panel_info parameters. Some
+ * drivers need to calculate the line length differently,
+ * so make the function weak to allow overriding it.
+ */
+__weak int lcd_get_size(int *line_length)
 {
 	*line_length = (panel_info.vl_col * NBITS(panel_info.vl_bpix)) / 8;
 	return *line_length * panel_info.vl_row;
@@ -415,7 +416,7 @@ int drv_lcd_init(void)
 	struct stdio_dev lcddev;
 	int rc;
 
-	lcd_base = (void *) gd->fb_base;
+	lcd_base = map_sysmem(gd->fb_base, 0);
 
 	lcd_init(lcd_base);		/* LCD initialization */
 
@@ -506,13 +507,12 @@ static int lcd_init(void *lcdbase)
 	 * by setting up gd->fb_base. Check for this condition and fixup
 	 * 'lcd_base' address.
 	 */
-	if ((unsigned long)lcdbase != gd->fb_base)
-		lcd_base = (void *)gd->fb_base;
+	if (map_to_sysmem(lcdbase) != gd->fb_base)
+		lcd_base = map_sysmem(gd->fb_base, 0);
 
 	debug("[LCD] Using LCD frambuffer at %p\n", lcd_base);
 
 	lcd_get_size(&lcd_line_length);
-	lcd_line_length = (panel_info.vl_col * NBITS(panel_info.vl_bpix)) / 8;
 	lcd_is_enabled = 1;
 	lcd_clear();
 	lcd_enable();
@@ -790,9 +790,9 @@ static void lcd_display_rle8_bitmap(bmp_image_t *bmp, ushort *cmap, uchar *fb,
 	int x, y;
 	int decode = 1;
 
-	width = le32_to_cpu(bmp->header.width);
-	height = le32_to_cpu(bmp->header.height);
-	bmap = (uchar *)bmp + le32_to_cpu(bmp->header.data_offset);
+	width = get_unaligned_le32(&bmp->header.width);
+	height = get_unaligned_le32(&bmp->header.height);
+	bmap = (uchar *)bmp + get_unaligned_le32(&bmp->header.data_offset);
 
 	x = 0;
 	y = height - 1;
@@ -899,7 +899,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	ushort *cmap_base = NULL;
 	ushort i, j;
 	uchar *fb;
-	bmp_image_t *bmp=(bmp_image_t *)bmp_image;
+	bmp_image_t *bmp = (bmp_image_t *)map_sysmem(bmp_image, 0);
 	uchar *bmap;
 	ushort padded_width;
 	unsigned long width, height, byte_width;
@@ -913,9 +913,10 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		return 1;
 	}
 
-	width = le32_to_cpu(bmp->header.width);
-	height = le32_to_cpu(bmp->header.height);
-	bmp_bpix = le16_to_cpu(bmp->header.bit_count);
+	width = get_unaligned_le32(&bmp->header.width);
+	height = get_unaligned_le32(&bmp->header.height);
+	bmp_bpix = get_unaligned_le16(&bmp->header.bit_count);
+
 	colors = 1 << bmp_bpix;
 
 	bpix = NBITS(panel_info.vl_bpix);
@@ -930,9 +931,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	/* We support displaying 8bpp BMPs on 16bpp LCDs */
 	if (bpix != bmp_bpix && !(bmp_bpix == 8 && bpix == 16)) {
 		printf ("Error: %d bit/pixel mode, but BMP has %d bit/pixel\n",
-			bpix,
-			le16_to_cpu(bmp->header.bit_count));
-
+			bpix, get_unaligned_le16(&bmp->header.bit_count));
 		return 1;
 	}
 
@@ -969,7 +968,6 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		}
 	}
 #endif
-
 	/*
 	 *  BMP format for Monochrome assumes that the state of a
 	 * pixel is described on a per Bit basis, not per Byte.
@@ -1000,15 +998,16 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	if ((y + height) > panel_info.vl_row)
 		height = panel_info.vl_row - y;
 
-	bmap = (uchar *) bmp + le32_to_cpu(bmp->header.data_offset);
-	fb   = (uchar *) (lcd_base +
+	bmap = (uchar *)bmp + get_unaligned_le32(&bmp->header.data_offset);
+	fb   = (uchar *)(lcd_base +
 		(y + height - 1) * lcd_line_length + x * bpix / 8);
 
 	switch (bmp_bpix) {
 	case 1: /* pass through */
 	case 8:
 #ifdef CONFIG_LCD_BMP_RLE8
-		if (le32_to_cpu(bmp->header.compression) == BMP_BI_RLE8) {
+		u32 compression = get_unaligned_le32(&bmp->header.compression);
+		if (compression == BMP_BI_RLE8) {
 			if (bpix != 16) {
 				/* TODO implement render code for bpix != 16 */
 				printf("Error: only support 16 bpix");

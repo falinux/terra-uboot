@@ -6,23 +6,7 @@
  * 2002-07-28 - rjones@nexus-tech.net - ported to ppcboot v1.1.6
  * 2003-03-10 - kharris@nexus-tech.net - ported to uboot
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -824,7 +808,7 @@ __u8 do_fat_read_at_block[MAX_CLUSTSIZE]
 
 long
 do_fat_read_at(const char *filename, unsigned long pos, void *buffer,
-	       unsigned long maxsize, int dols)
+	       unsigned long maxsize, int dols, int dogetsize)
 {
 	char fnamecopy[2048];
 	boot_sector bs;
@@ -1168,7 +1152,10 @@ rootdir_done:
 			subname = nextname;
 	}
 
-	ret = get_contents(mydata, dentptr, pos, buffer, maxsize);
+	if (dogetsize)
+		ret = FAT2CPU32(dentptr->size);
+	else
+		ret = get_contents(mydata, dentptr, pos, buffer, maxsize);
 	debug("Size: %d, got: %ld\n", FAT2CPU32(dentptr->size), ret);
 
 exit:
@@ -1179,7 +1166,7 @@ exit:
 long
 do_fat_read(const char *filename, void *buffer, unsigned long maxsize, int dols)
 {
-	return do_fat_read_at(filename, 0, buffer, maxsize, dols);
+	return do_fat_read_at(filename, 0, buffer, maxsize, dols, 0);
 }
 
 int file_fat_detectfs(void)
@@ -1249,11 +1236,18 @@ int file_fat_ls(const char *dir)
 	return do_fat_read(dir, NULL, 0, LS_YES);
 }
 
+int fat_exists(const char *filename)
+{
+	int sz;
+	sz = do_fat_read_at(filename, 0, NULL, 0, LS_NO, 1);
+	return sz >= 0;
+}
+
 long file_fat_read_at(const char *filename, unsigned long pos, void *buffer,
 		      unsigned long maxsize)
 {
 	printf("reading %s\n", filename);
-	return do_fat_read_at(filename, pos, buffer, maxsize, LS_NO);
+	return do_fat_read_at(filename, pos, buffer, maxsize, LS_NO, 0);
 }
 
 long file_fat_read(const char *filename, void *buffer, unsigned long maxsize)

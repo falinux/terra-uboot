@@ -10,23 +10,7 @@
  * Copyright (c) 2003	Kshitij <kshitij@ti.com>
  * Copyright (c) 2006-2008 Syed Mohammed Khasim <x0khasim@ti.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <asm-offsets.h>
@@ -54,12 +38,19 @@ _irq:			.word _irq
 _fiq:			.word _fiq
 _pad:			.word 0x12345678 /* now 16*4=64 */
 #else
+.globl _undefined_instruction
 _undefined_instruction: .word undefined_instruction
+.globl _software_interrupt
 _software_interrupt:	.word software_interrupt
+.globl _prefetch_abort
 _prefetch_abort:	.word prefetch_abort
+.globl _data_abort
 _data_abort:		.word data_abort
+.globl _not_used
 _not_used:		.word not_used
+.globl _irq
 _irq:			.word irq
+.globl _fiq
 _fiq:			.word fiq
 _pad:			.word 0x12345678 /* now 16*4=64 */
 #endif	/* CONFIG_SPL_BUILD */
@@ -78,29 +69,6 @@ _end_vect:
  * setup stack
  *
  *************************************************************************/
-
-.globl _TEXT_BASE
-_TEXT_BASE:
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_TEXT_BASE)
-	.word	CONFIG_SPL_TEXT_BASE
-#else
-	.word	CONFIG_SYS_TEXT_BASE
-#endif
-
-/*
- * These are defined in the board-specific linker script.
- */
-.globl _bss_start_ofs
-_bss_start_ofs:
-	.word __bss_start - _start
-
-.globl _bss_end_ofs
-_bss_end_ofs:
-	.word __bss_end - _start
-
-.globl _end_ofs
-_end_ofs:
-	.word _end - _start
 
 #ifdef CONFIG_USE_IRQ
 /* IRQ stack memory (calculated at run-time) */
@@ -237,7 +205,7 @@ ENTRY(cpu_init_cp15)
 	mcr	p15, 0, r0, c1, c0, 0	@ write system control register
 #endif
 
-#ifdef CONFIG_ARM_ERRATA_742230
+#if (defined(CONFIG_ARM_ERRATA_742230) || defined(CONFIG_ARM_ERRATA_794072))
 	mrc	p15, 0, r0, c15, c0, 1	@ read diagnostic register
 	orr	r0, r0, #1 << 4		@ set bit #4
 	mcr	p15, 0, r0, c15, c0, 1	@ write diagnostic register
@@ -252,6 +220,11 @@ ENTRY(cpu_init_cp15)
 #ifdef CONFIG_ARM_ERRATA_751472
 	mrc	p15, 0, r0, c15, c0, 1	@ read diagnostic register
 	orr	r0, r0, #1 << 11	@ set bit #11
+	mcr	p15, 0, r0, c15, c0, 1	@ write diagnostic register
+#endif
+#ifdef CONFIG_ARM_ERRATA_761320
+	mrc	p15, 0, r0, c15, c0, 1	@ read diagnostic register
+	orr	r0, r0, #1 << 21	@ set bit #21
 	mcr	p15, 0, r0, c15, c0, 1	@ write diagnostic register
 #endif
 

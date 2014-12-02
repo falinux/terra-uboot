@@ -18,19 +18,7 @@
  *
  * ext4write : Based on generic ext4 protocol.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -217,6 +205,14 @@ int ext4fs_ls(const char *dirname)
 	return 0;
 }
 
+int ext4fs_exists(const char *filename)
+{
+	int file_len;
+
+	file_len = ext4fs_open(filename);
+	return file_len >= 0;
+}
+
 int ext4fs_read(char *buf, unsigned len)
 {
 	if (ext4fs_root == NULL || ext4fs_file == NULL)
@@ -251,13 +247,13 @@ int ext4_read_file(const char *filename, void *buf, int offset, int len)
 	}
 
 	file_len = ext4fs_open(filename);
-#ifdef CONFIG_IMX6_NADIA
+#ifdef CONFIG_NADIA
 	//falinux
         ret = strcmp(filename, "uImage.imx6-3.2");
 #endif
 	if (file_len < 0) {
 		printf("** File not found %s **\n", filename);
-#ifdef CONFIG_IMX6_NADIA
+#ifdef CONFIG_NADIA
 		//falinux
                 if ( !(ret == 0) ) {
                         make_wave( 2000, 300 );
@@ -265,16 +261,14 @@ int ext4_read_file(const char *filename, void *buf, int offset, int len)
                         make_wave( 2000, 300 );
                         set_front_led( 0, 1 );
 		}
+		//falinux
+		if( ret == 0 ) {
+			set_front_led( 0, 1 );
+		}
 #endif
 		return -1;
 	}
-#ifdef CONFIG_IMX6_NADIA
 
-	//falinux
-	if( ret == 0 ) {
-		set_front_led( 0, 1 );
-	}
-#endif
 
 	if (len == 0)
 		len = file_len;

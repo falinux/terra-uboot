@@ -4,20 +4,7 @@
  * Author: InKi Dae <inki.dae@samsung.com>
  * Author: Donghwa Lee <dh09.lee@samsung.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -86,18 +73,19 @@ static void exynos_fimd_set_par(unsigned int win_id)
 	/* DATAPATH is DMA */
 	cfg |= EXYNOS_WINCON_DATAPATH_DMA;
 
-	if (pvid->logo_on) /* To get proprietary LOGO */
-		cfg |= EXYNOS_WINCON_WSWP_ENABLE;
-	else /* To get output console on LCD */
-		cfg |= EXYNOS_WINCON_HAWSWP_ENABLE;
+	cfg |= EXYNOS_WINCON_HAWSWP_ENABLE;
 
 	/* dma burst is 16 */
 	cfg |= EXYNOS_WINCON_BURSTLEN_16WORD;
 
-	if (pvid->logo_on) /* To get proprietary LOGO */
-		cfg |= EXYNOS_WINCON_BPPMODE_24BPP_888;
-	else /* To get output console on LCD */
+	switch (pvid->vl_bpix) {
+	case 4:
 		cfg |= EXYNOS_WINCON_BPPMODE_16BPP_565;
+		break;
+	default:
+		cfg |= EXYNOS_WINCON_BPPMODE_24BPP_888;
+		break;
+	}
 
 	writel(cfg, (unsigned int)&fimd_ctrl->wincon0 +
 			EXYNOS_WINCON(win_id));

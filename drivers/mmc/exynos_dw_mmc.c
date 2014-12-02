@@ -2,20 +2,7 @@
  * (C) Copyright 2012 SAMSUNG Electronics
  * Jaehoon Chung <jh80.chung@samsung.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,  MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -42,9 +29,35 @@ static void exynos_dwmci_clksel(struct dwmci_host *host)
 	dwmci_writel(host, DWMCI_CLKSEL, host->clksel_val);
 }
 
-unsigned int exynos_dwmci_get_clk(int dev_index)
+unsigned int exynos_dwmci_get_clk(struct dwmci_host *host)
 {
-	return get_mmc_clk(dev_index);
+	unsigned long sclk;
+	int8_t clk_div;
+
+	/*
+	 * Since SDCLKIN is divided inside controller by the DIVRATIO
+	 * value set in the CLKSEL register, we need to use the same output
+	 * clock value to calculate the CLKDIV value.
+	 * as per user manual:cclk_in = SDCLKIN / (DIVRATIO + 1)
+	 */
+	clk_div = ((dwmci_readl(host, DWMCI_CLKSEL) >> DWMCI_DIVRATIO_BIT)
+			& DWMCI_DIVRATIO_MASK) + 1;
+	sclk = get_mmc_clk(host->dev_index);
+
+	return sclk / clk_div;
+}
+
+static void exynos_dwmci_board_init(struct dwmci_host *host)
+{
+	if (host->quirks & DWMCI_QUIRK_DISABLE_SMU) {
+		dwmci_writel(host, EMMCP_MPSBEGIN0, 0);
+		dwmci_writel(host, EMMCP_SEND0, 0);
+		dwmci_writel(host, EMMCP_CTRL0,
+			     MPSCTRL_SECURE_READ_BIT |
+			     MPSCTRL_SECURE_WRITE_BIT |
+			     MPSCTRL_NON_SECURE_READ_BIT |
+			     MPSCTRL_NON_SECURE_WRITE_BIT | MPSCTRL_VALID);
+	}
 }
 
 /*
@@ -75,6 +88,10 @@ int exynos_dwmci_add_port(int index, u32 regbase, int bus_width, u32 clksel)
 	host->name = "EXYNOS DWMMC";
 	host->ioaddr = (void *)regbase;
 	host->buswidth = bus_width;
+#ifdef CONFIG_EXYNOS5420
+	host->quirks = DWMCI_QUIRK_DISABLE_SMU;
+#endif
+	host->board_init = exynos_dwmci_board_init;
 
 	if (clksel) {
 		host->clksel_val = clksel;
@@ -87,7 +104,7 @@ int exynos_dwmci_add_port(int index, u32 regbase, int bus_width, u32 clksel)
 
 	host->clksel = exynos_dwmci_clksel;
 	host->dev_index = index;
-	host->mmc_clk = exynos_dwmci_get_clk;
+	host->get_mmc_clk = exynos_dwmci_get_clk;
 	/* Add the mmc channel to be registered with mmc core */
 	if (add_dwmci(host, DWMMC_MAX_FREQ, DWMMC_MIN_FREQ)) {
 		debug("dwmmc%d registration failed\n", index);

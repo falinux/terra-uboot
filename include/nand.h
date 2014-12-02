@@ -9,16 +9,6 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #ifndef _NAND_H_
@@ -31,9 +21,15 @@
  * at the same time, so do it here.  When all drivers are
  * converted, this will go away.
  */
+#ifdef CONFIG_SPL_BUILD
+#if defined(CONFIG_NAND_FSL_ELBC) || defined(CONFIG_NAND_FSL_IFC)
+#define CONFIG_SYS_NAND_SELF_INIT
+#endif
+#else
 #if defined(CONFIG_NAND_FSL_ELBC) || defined(CONFIG_NAND_ATMEL)\
 	|| defined(CONFIG_NAND_FSL_IFC)
 #define CONFIG_SYS_NAND_SELF_INIT
+#endif
 #endif
 
 extern void nand_init(void);

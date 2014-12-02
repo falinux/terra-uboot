@@ -19,9 +19,11 @@
 #include <net.h>
 #include <status_led.h>
 #include <version.h>
+#include <watchdog.h>
 
 #include <asm/cplb.h>
 #include <asm/mach-common/bits/mpu.h>
+#include <asm/clock.h>
 #include <kgdb.h>
 
 #ifdef CONFIG_CMD_NAND
@@ -35,6 +37,10 @@
 #if defined(CONFIG_POST)
 #include <post.h>
 int post_flag;
+#endif
+
+#if defined(CONFIG_SYS_I2C)
+#include <i2c.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -63,6 +69,7 @@ static int display_banner(void)
 static int init_baudrate(void)
 {
 	gd->baudrate = getenv_ulong("baudrate", 10, CONFIG_BAUDRATE);
+	gd->bd->bi_baudrate = gd->baudrate;
 	return 0;
 }
 
@@ -136,7 +143,8 @@ void init_cplbtables(void)
 	++i;
 #if defined(__ADSPBF60x__)
 	icplb_add(0x0, 0x0);
-	dcplb_add(CONFIG_SYS_FLASH_BASE, SDRAM_EBIU);
+	dcplb_add(CONFIG_SYS_FLASH_BASE, PAGE_SIZE_16MB | CPLB_DIRTY |
+		CPLB_SUPV_WR | CPLB_USER_WR | CPLB_USER_RD | CPLB_VALID);
 	++i;
 #endif
 
@@ -231,8 +239,6 @@ static int global_board_data_init(void)
 	bd->bi_sclk = get_sclk();
 	bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
 	bd->bi_memsize = CONFIG_SYS_MAX_RAM_SIZE;
-	bd->bi_baudrate = (gd->baudrate > 0)
-		? simple_strtoul(gd->baudrate, NULL, 10) : CONFIG_BAUDRATE;
 
 	return 0;
 }
@@ -387,6 +393,9 @@ void board_init_r(gd_t * id, ulong dest_addr)
 	mmc_initialize(bd);
 #endif
 
+#if defined(CONFIG_SYS_I2C)
+	i2c_reloc_fixup();
+#endif
 	/* relocate environment function pointers etc. */
 	env_relocate();
 

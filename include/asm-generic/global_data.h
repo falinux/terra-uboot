@@ -3,23 +3,7 @@
  * (C) Copyright 2002-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #ifndef __ASM_GENERIC_GBL_DATA_H
@@ -37,6 +21,8 @@
  */
 
 #ifndef __ASSEMBLY__
+#include <linux/list.h>
+
 typedef struct global_data {
 	bd_t *bd;
 	unsigned long flags;
@@ -77,6 +63,12 @@ typedef struct global_data {
 	unsigned long start_addr_sp;	/* start_addr_stackpointer */
 	unsigned long reloc_off;
 	struct global_data *new_gd;	/* relocated global data */
+
+#ifdef CONFIG_DM
+	struct device	*dm_root;	/* Root instance for Driver Model */
+	struct list_head uclass_root;	/* Head of core tree */
+#endif
+
 	const void *fdt_blob;	/* Our device tree, NULL if none */
 	void *new_fdt;		/* Relocated FDT */
 	unsigned long fdt_size;	/* Space reserved for relocated FDT */
@@ -85,6 +77,11 @@ typedef struct global_data {
 #ifdef CONFIG_TRACE
 	void		*trace_buff;	/* The trace buffer */
 #endif
+#if defined(CONFIG_SYS_I2C)
+	int		cur_i2c_bus;	/* current used i2c bus */
+#endif
+	unsigned long timebase_h;
+	unsigned long timebase_l;
 	struct arch_global_data arch;	/* architecture-specific data */
 } gd_t;
 #endif

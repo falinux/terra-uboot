@@ -11,23 +11,7 @@
  * (c) 1995, Dionne & Associates
  * (c) 1995, DKG Display Tech.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
- * MA 02110-1301 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -206,6 +190,7 @@ ENTRY(_start)
 	call _memcpy_ASM;
 #endif
 
+.Lnorelocate:
 	/* Initialize BSS section ... we know that memset() does not
 	 * use the BSS, so it is safe to call here.  The bootrom LDR
 	 * takes care of clearing things for us.
@@ -218,7 +203,6 @@ ENTRY(_start)
 	r2.h = __bss_len;
 	call _memset;
 
-.Lnorelocate:
 
 	/* Setup the actual stack in external memory */
 	sp.h = HI(CONFIG_STACKBASE);

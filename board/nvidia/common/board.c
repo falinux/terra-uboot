@@ -2,23 +2,7 @@
  *  (C) Copyright 2010,2011
  *  NVIDIA Corporation <www.nvidia.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -48,6 +32,7 @@
 #ifdef CONFIG_USB_EHCI_TEGRA
 #include <asm/arch-tegra/usb.h>
 #include <asm/arch/usb.h>
+#include <usb.h>
 #endif
 #ifdef CONFIG_TEGRA_MMC
 #include <asm/arch-tegra/tegra_mmc.h>
@@ -62,17 +47,6 @@ DECLARE_GLOBAL_DATA_PTR;
 const struct tegra_sysinfo sysinfo = {
 	CONFIG_TEGRA_BOARD_STRING
 };
-
-#ifndef CONFIG_SPL_BUILD
-/*
- * Routine: timer_init
- * Description: init the timestamp and lastinc value
- */
-int timer_init(void)
-{
-	return 0;
-}
-#endif
 
 void __pin_mux_usb(void)
 {
@@ -93,12 +67,14 @@ void __gpio_early_init_uart(void)
 void gpio_early_init_uart(void)
 __attribute__((weak, alias("__gpio_early_init_uart")));
 
+#if defined(CONFIG_TEGRA_NAND)
 void __pin_mux_nand(void)
 {
 	funcmux_select(PERIPH_ID_NDFLASH, FUNCMUX_DEFAULT);
 }
 
 void pin_mux_nand(void) __attribute__((weak, alias("__pin_mux_nand")));
+#endif
 
 void __pin_mux_display(void)
 {
@@ -151,7 +127,7 @@ int board_init(void)
 
 	power_det_init();
 
-#ifdef CONFIG_TEGRA_I2C
+#ifdef CONFIG_SYS_I2C_TEGRA
 #ifndef CONFIG_SYS_I2C_INIT_BOARD
 #error "You must define CONFIG_SYS_I2C_INIT_BOARD to use i2c on Nvidia boards"
 #endif
@@ -165,12 +141,13 @@ int board_init(void)
 		debug("Memory controller init failed: %d\n", err);
 #  endif
 # endif /* CONFIG_TEGRA_PMU */
-#endif /* CONFIG_TEGRA_I2C */
+#endif /* CONFIG_SYS_I2C_TEGRA */
 
 #ifdef CONFIG_USB_EHCI_TEGRA
 	pin_mux_usb();
-	board_usb_init(gd->fdt_blob);
+	usb_process_devicetree(gd->fdt_blob);
 #endif
+
 #ifdef CONFIG_LCD
 	tegra_lcd_check_next_stage(gd->fdt_blob, 0);
 #endif

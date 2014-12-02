@@ -6,23 +6,7 @@
  * (C) Copyright 2005
  * JinHua Luo, GuangDong Linux Center, <luo.jinhua@gd-linux.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* #define	DEBUG	*/
@@ -216,8 +200,7 @@ static int abortboot_normal(int bootdelay)
 	printf(CONFIG_MENUPROMPT);
 #else
 
-#ifdef CONFIG_IMX6_NADIA
-
+#ifdef CONFIG_NADIA
         //falinux added
         rsw = get_rotary_switch_value();
 
@@ -245,13 +228,6 @@ static int abortboot_normal(int bootdelay)
                 if (str != NULL)
                         free (str);
 	}	
-#else
-	//IMX6QEM or mx6qsabrelite
-	char *str = strdup(getenv("bootargs_recv"));
-	setenv ("bootargs", str);  /* set or delete definition */
-	if (str != NULL)
-		free (str);
-
 #endif
 
 	if (bootdelay >= 0)
@@ -428,7 +404,7 @@ static void process_boot_delay(void)
 #ifdef CONFIG_BOOTCOUNT_LIMIT
 	if (bootlimit && (bootcount > bootlimit)) {
 		printf ("Warning: Bootlimit (%u) exceeded. Using altbootcmd.\n",
-		        (unsigned)bootlimit);
+			(unsigned)bootlimit);
 		s = getenv ("altbootcmd");
 	}
 	else
@@ -455,10 +431,11 @@ static void process_boot_delay(void)
 	debug ("### main_loop: bootcmd=\"%s\"\n", s ? s : "<UNDEFINED>");
 
 	if (bootdelay != -1 && s && !abortboot(bootdelay)) {
-#ifdef CONFIG_AUTOBOOT_KEYED
+#if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 # endif
-		// falinux boot command retry
+// [FALINUX]
+#ifdef CONFIG_IMX6_NADIA
 		{
 			int i;
 
@@ -466,19 +443,17 @@ static void process_boot_delay(void)
 				run_command_list(s, -1, 0);
 				printf(" boot cmd retry ... %d\n", i+1);
 			}
-#ifdef CONFIG_IMX6_NADIA
-
 			// FIXME board boot fail..
 			// buzzer.... 
 			make_wave( 2000, 300 );
 			mdelay(2000);
 			make_wave( 2000, 300 );
 			set_front_led(0, 1);
-#endif
-
 		}
-
-#ifdef CONFIG_AUTOBOOT_KEYED
+#else
+		run_command_list(s, -1, 0);
+#endif
+#if defined(CONFIG_AUTOBOOT_KEYED) && !defined(CONFIG_AUTOBOOT_KEYED_CTRLC)
 		disable_ctrlc(prev);	/* restore Control C checking */
 #endif
 	}

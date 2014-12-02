@@ -1,21 +1,7 @@
 /*
  * Copyright (C) 2008, Guennadi Liakhovetski <lg@denx.de>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -129,7 +115,8 @@ static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs,
 {
 	u32 clk_src = mxc_get_clock(MXC_CSPI_CLK);
 	s32 reg_ctrl, reg_config;
-	u32 ss_pol = 0, sclkpol = 0, sclkpha = 0, pre_div = 0, post_div = 0;
+	u32 ss_pol = 0, sclkpol = 0, sclkpha = 0, sclkctl = 0;
+	u32 pre_div = 0, post_div = 0;
 	struct cspi_regs *regs = (struct cspi_regs *)mxcs->base;
 
 	if (max_hz == 0) {
@@ -178,8 +165,10 @@ static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs,
 	if (mode & SPI_CS_HIGH)
 		ss_pol = 1;
 
-	if (mode & SPI_CPOL)
+	if (mode & SPI_CPOL) {
 		sclkpol = 1;
+		sclkctl = 1;
+	}
 
 	if (mode & SPI_CPHA)
 		sclkpha = 1;
@@ -194,6 +183,8 @@ static s32 spi_cfg_mxc(struct mxc_spi_slave *mxcs, unsigned int cs,
 		(ss_pol << (cs + MXC_CSPICON_SSPOL));
 	reg_config = (reg_config & ~(1 << (cs + MXC_CSPICON_POL))) |
 		(sclkpol << (cs + MXC_CSPICON_POL));
+	reg_config = (reg_config & ~(1 << (cs + MXC_CSPICON_CTL))) |
+		(sclkctl << (cs + MXC_CSPICON_CTL));
 	reg_config = (reg_config & ~(1 << (cs + MXC_CSPICON_PHA))) |
 		(sclkpha << (cs + MXC_CSPICON_PHA));
 
@@ -269,8 +260,8 @@ int spi_xchg_single(struct spi_slave *slave, unsigned int bitlen,
 			} else {
 				data = *(u32 *)dout;
 				data = cpu_to_be32(data);
+				dout += 4;
 			}
-			dout += 4;
 		}
 		debug("Sending SPI 0x%x\n", data);
 		reg_write(&regs->txdata, data);

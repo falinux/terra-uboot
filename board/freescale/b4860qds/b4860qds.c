@@ -1,23 +1,7 @@
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -27,6 +11,7 @@
 #include <linux/compiler.h>
 #include <asm/mmu.h>
 #include <asm/processor.h>
+#include <asm/errno.h>
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_law.h>
@@ -37,6 +22,7 @@
 
 #include "../common/qixis.h"
 #include "../common/vsc3316_3308.h"
+#include "../common/idt8t49n222a_serdes_clk.h"
 #include "b4860qds.h"
 #include "b4860qds_qixis.h"
 #include "b4860qds_crossbar_con.h"
@@ -51,8 +37,6 @@ int checkboard(void)
 	char buf[64];
 	u8 sw;
 	struct cpu_type *cpu = gd->arch.cpu;
-	ccsr_gur_t *gur = (void *)CONFIG_SYS_MPC85xx_GUTS_ADDR;
-	unsigned int i;
 	static const char *const freq[] = {"100", "125", "156.25", "161.13",
 						"122.88", "122.88", "122.88"};
 	int clock;
@@ -76,19 +60,6 @@ int checkboard(void)
 		(int)qixis_read_minor());
 	/* the timestamp string contains "\n" at the end */
 	printf(" on %s", qixis_read_time(buf));
-
-	/* Display the RCW, so that no one gets confused as to what RCW
-	 * we're actually using for this boot.
-	 */
-	puts("Reset Configuration Word (RCW):");
-	for (i = 0; i < ARRAY_SIZE(gur->rcwsr); i++) {
-		u32 rcw = in_be32(&gur->rcwsr[i]);
-
-		if ((i % 4) == 0)
-			printf("\n       %08x:", i * 4);
-		printf(" %08x", rcw);
-	}
-	puts("\n");
 
 	/*
 	 * Display the actual SERDES reference clocks as configured by the
@@ -149,6 +120,7 @@ int configure_vsc3316_3308(void)
 	debug("Using SERDES2 Protocol: 0x%x:\n", serdes2_prtcl);
 
 	switch (serdes1_prtcl) {
+	case 0x29:
 	case 0x2a:
 	case 0x2C:
 	case 0x2D:
@@ -180,7 +152,55 @@ int configure_vsc3316_3308(void)
 		}
 		break;
 
+	case 0x02:
+	case 0x04:
+	case 0x05:
+	case 0x06:
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x30:
+	case 0x32:
+	case 0x33:
+	case 0x34:
+	case 0x39:
+	case 0x3A:
+	case 0x3C:
+	case 0x3D:
+	case 0x5C:
+	case 0x5D:
+			/*
+			 * Configuration:
+			 * SERDES: 1
+			 * Lanes: A,B: AURORA
+			 * Lanes: C,d: SGMII
+			 * Lanes: E,F,G,H: CPRI
+			 */
+		debug("Configuring crossbar for Aurora, SGMII 3 and 4,"
+				" and CPRI. srds_prctl:%x\n", serdes1_prtcl);
+		num_vsc16_con = NUM_CON_VSC3316;
+		/* Configure VSC3316 crossbar switch */
+		ret = select_i2c_ch_pca(I2C_CH_VSC3316);
+		if (!ret) {
+			ret = vsc3316_config(VSC3316_TX_ADDRESS,
+					vsc16_tx_sfp_sgmii_aurora,
+					num_vsc16_con);
+			if (ret)
+				return ret;
+			ret = vsc3316_config(VSC3316_RX_ADDRESS,
+					vsc16_rx_sfp_sgmii_aurora,
+					num_vsc16_con);
+			if (ret)
+				return ret;
+		} else {
+			return ret;
+		}
+		break;
+
 #ifdef CONFIG_PPC_B4420
+	case 0x17:
 	case 0x18:
 			/*
 			 * Configuration:
@@ -268,10 +288,394 @@ int configure_vsc3316_3308(void)
 	return 0;
 }
 
+static int calibrate_pll(serdes_corenet_t *srds_regs, int pll_num)
+{
+	u32 rst_err;
+
+	/* Steps For SerDes PLLs reset and reconfiguration
+	 * or PLL power-up procedure
+	 */
+	debug("CALIBRATE PLL:%d\n", pll_num);
+	clrbits_be32(&srds_regs->bank[pll_num].rstctl,
+			SRDS_RSTCTL_SDRST_B);
+	udelay(10);
+	clrbits_be32(&srds_regs->bank[pll_num].rstctl,
+		(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B));
+	udelay(10);
+	setbits_be32(&srds_regs->bank[pll_num].rstctl,
+			SRDS_RSTCTL_RST);
+	setbits_be32(&srds_regs->bank[pll_num].rstctl,
+		(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B
+		| SRDS_RSTCTL_SDRST_B));
+
+	udelay(20);
+
+	/* Check whether PLL has been locked or not */
+	rst_err = in_be32(&srds_regs->bank[pll_num].rstctl) &
+				SRDS_RSTCTL_RSTERR;
+	rst_err >>= SRDS_RSTCTL_RSTERR_SHIFT;
+	debug("RST_ERR value for PLL %d is: 0x%x:\n", pll_num, rst_err);
+	if (rst_err)
+		return rst_err;
+
+	return rst_err;
+}
+
+static int check_pll_locks(serdes_corenet_t *srds_regs, int pll_num)
+{
+	int ret = 0;
+	u32 fcap, dcbias, bcap, pllcr1, pllcr0;
+
+	if (calibrate_pll(srds_regs, pll_num)) {
+		/* STEP 1 */
+		/* Read fcap, dcbias and bcap value */
+		clrbits_be32(&srds_regs->bank[pll_num].pllcr0,
+				SRDS_PLLCR0_DCBIAS_OUT_EN);
+		fcap = in_be32(&srds_regs->bank[pll_num].pllsr2) &
+					SRDS_PLLSR2_FCAP;
+		fcap >>= SRDS_PLLSR2_FCAP_SHIFT;
+		bcap = in_be32(&srds_regs->bank[pll_num].pllsr2) &
+					SRDS_PLLSR2_BCAP_EN;
+		bcap >>= SRDS_PLLSR2_BCAP_EN_SHIFT;
+		setbits_be32(&srds_regs->bank[pll_num].pllcr0,
+				SRDS_PLLCR0_DCBIAS_OUT_EN);
+		dcbias = in_be32(&srds_regs->bank[pll_num].pllsr2) &
+					SRDS_PLLSR2_DCBIAS;
+		dcbias >>= SRDS_PLLSR2_DCBIAS_SHIFT;
+		debug("values of bcap:%x, fcap:%x and dcbias:%x\n",
+					bcap, fcap, dcbias);
+		if (fcap == 0 && bcap == 1) {
+			/* Step 3 */
+			clrbits_be32(&srds_regs->bank[pll_num].rstctl,
+				(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B
+				 | SRDS_RSTCTL_SDRST_B));
+			clrbits_be32(&srds_regs->bank[pll_num].pllcr1,
+					SRDS_PLLCR1_BCAP_EN);
+			setbits_be32(&srds_regs->bank[pll_num].pllcr1,
+					SRDS_PLLCR1_BCAP_OVD);
+			if (calibrate_pll(srds_regs, pll_num)) {
+				/*save the fcap, dcbias and bcap values*/
+				clrbits_be32(&srds_regs->bank[pll_num].pllcr0,
+						SRDS_PLLCR0_DCBIAS_OUT_EN);
+				fcap = in_be32(&srds_regs->bank[pll_num].pllsr2)
+					& SRDS_PLLSR2_FCAP;
+				fcap >>= SRDS_PLLSR2_FCAP_SHIFT;
+				bcap = in_be32(&srds_regs->bank[pll_num].pllsr2)
+					& SRDS_PLLSR2_BCAP_EN;
+				bcap >>= SRDS_PLLSR2_BCAP_EN_SHIFT;
+				setbits_be32(&srds_regs->bank[pll_num].pllcr0,
+						SRDS_PLLCR0_DCBIAS_OUT_EN);
+				dcbias = in_be32
+					(&srds_regs->bank[pll_num].pllsr2) &
+							SRDS_PLLSR2_DCBIAS;
+				dcbias >>= SRDS_PLLSR2_DCBIAS_SHIFT;
+
+				/* Step 4*/
+				clrbits_be32(&srds_regs->bank[pll_num].rstctl,
+				(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B
+				 | SRDS_RSTCTL_SDRST_B));
+				setbits_be32(&srds_regs->bank[pll_num].pllcr1,
+						SRDS_PLLCR1_BYP_CAL);
+				clrbits_be32(&srds_regs->bank[pll_num].pllcr1,
+						SRDS_PLLCR1_BCAP_EN);
+				setbits_be32(&srds_regs->bank[pll_num].pllcr1,
+						SRDS_PLLCR1_BCAP_OVD);
+				/* change the fcap and dcbias to the saved
+				 * values from Step 3 */
+				clrbits_be32(&srds_regs->bank[pll_num].pllcr1,
+							SRDS_PLLCR1_PLL_FCAP);
+				pllcr1 = (in_be32
+					(&srds_regs->bank[pll_num].pllcr1)|
+					(fcap << SRDS_PLLCR1_PLL_FCAP_SHIFT));
+				out_be32(&srds_regs->bank[pll_num].pllcr1,
+							pllcr1);
+				clrbits_be32(&srds_regs->bank[pll_num].pllcr0,
+						SRDS_PLLCR0_DCBIAS_OVRD);
+				pllcr0 = (in_be32
+				(&srds_regs->bank[pll_num].pllcr0)|
+				(dcbias << SRDS_PLLCR0_DCBIAS_OVRD_SHIFT));
+				out_be32(&srds_regs->bank[pll_num].pllcr0,
+							pllcr0);
+				ret = calibrate_pll(srds_regs, pll_num);
+				if (ret)
+					return ret;
+			} else {
+				goto out;
+			}
+		} else { /* Step 5 */
+			clrbits_be32(&srds_regs->bank[pll_num].rstctl,
+				(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B
+				 | SRDS_RSTCTL_SDRST_B));
+			udelay(10);
+			/* Change the fcap, dcbias, and bcap to the
+			 * values from Step 1 */
+			setbits_be32(&srds_regs->bank[pll_num].pllcr1,
+					SRDS_PLLCR1_BYP_CAL);
+			clrbits_be32(&srds_regs->bank[pll_num].pllcr1,
+						SRDS_PLLCR1_PLL_FCAP);
+			pllcr1 = (in_be32(&srds_regs->bank[pll_num].pllcr1)|
+				(fcap << SRDS_PLLCR1_PLL_FCAP_SHIFT));
+			out_be32(&srds_regs->bank[pll_num].pllcr1,
+						pllcr1);
+			clrbits_be32(&srds_regs->bank[pll_num].pllcr0,
+						SRDS_PLLCR0_DCBIAS_OVRD);
+			pllcr0 = (in_be32(&srds_regs->bank[pll_num].pllcr0)|
+				(dcbias << SRDS_PLLCR0_DCBIAS_OVRD_SHIFT));
+			out_be32(&srds_regs->bank[pll_num].pllcr0,
+						pllcr0);
+			clrbits_be32(&srds_regs->bank[pll_num].pllcr1,
+					SRDS_PLLCR1_BCAP_EN);
+			setbits_be32(&srds_regs->bank[pll_num].pllcr1,
+					SRDS_PLLCR1_BCAP_OVD);
+			ret = calibrate_pll(srds_regs, pll_num);
+			if (ret)
+				return ret;
+		}
+	}
+out:
+	return 0;
+}
+
+static int check_serdes_pll_locks(void)
+{
+	serdes_corenet_t *srds1_regs =
+		(void *)CONFIG_SYS_FSL_CORENET_SERDES_ADDR;
+	serdes_corenet_t *srds2_regs =
+		(void *)CONFIG_SYS_FSL_CORENET_SERDES2_ADDR;
+	int i, ret1, ret2;
+
+	debug("\nSerDes1 Lock check\n");
+	for (i = 0; i < CONFIG_SYS_FSL_SRDS_NUM_PLLS; i++) {
+		ret1 = check_pll_locks(srds1_regs, i);
+		if (ret1) {
+			printf("SerDes1, PLL:%d didnt lock\n", i);
+			return ret1;
+		}
+	}
+	debug("\nSerDes2 Lock check\n");
+	for (i = 0; i < CONFIG_SYS_FSL_SRDS_NUM_PLLS; i++) {
+		ret2 = check_pll_locks(srds2_regs, i);
+		if (ret2) {
+			printf("SerDes2, PLL:%d didnt lock\n", i);
+			return ret2;
+		}
+	}
+
+	return 0;
+}
+
+int config_serdes1_refclks(void)
+{
+	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	serdes_corenet_t *srds_regs =
+		(void *)CONFIG_SYS_FSL_CORENET_SERDES_ADDR;
+	u32 serdes1_prtcl, lane;
+	unsigned int flag_sgmii_aurora_prtcl = 0;
+	int i;
+	int ret = 0;
+
+	serdes1_prtcl = in_be32(&gur->rcwsr[4]) &
+			FSL_CORENET2_RCWSR4_SRDS1_PRTCL;
+	if (!serdes1_prtcl) {
+		printf("SERDES1 is not enabled\n");
+		return -1;
+	}
+	serdes1_prtcl >>= FSL_CORENET2_RCWSR4_SRDS1_PRTCL_SHIFT;
+	debug("Using SERDES1 Protocol: 0x%x:\n", serdes1_prtcl);
+
+	/* To prevent generation of reset request from SerDes
+	 * while changing the refclks, By setting SRDS_RST_MSK bit,
+	 * SerDes reset event cannot cause a reset request
+	 */
+	setbits_be32(&gur->rstrqmr1, FSL_CORENET_RSTRQMR1_SRDS_RST_MSK);
+
+	/* Reconfigure IDT idt8t49n222a device for CPRI to work
+	 * For this SerDes1's Refclk1 and refclk2 need to be set
+	 * to 122.88MHz
+	 */
+	switch (serdes1_prtcl) {
+	case 0x2A:
+	case 0x2C:
+	case 0x2D:
+	case 0x2E:
+	case 0x02:
+	case 0x04:
+	case 0x05:
+	case 0x06:
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x30:
+	case 0x32:
+	case 0x33:
+	case 0x34:
+	case 0x39:
+	case 0x3A:
+	case 0x3C:
+	case 0x3D:
+	case 0x5C:
+	case 0x5D:
+		debug("Configuring idt8t49n222a for CPRI SerDes clks:"
+			" for srds_prctl:%x\n", serdes1_prtcl);
+		ret = select_i2c_ch_pca(I2C_CH_IDT);
+		if (!ret) {
+			ret = set_serdes_refclk(IDT_SERDES1_ADDRESS, 1,
+					SERDES_REFCLK_122_88,
+					SERDES_REFCLK_122_88, 0);
+			if (ret) {
+				printf("IDT8T49N222A configuration failed.\n");
+				goto out;
+			} else
+				debug("IDT8T49N222A configured.\n");
+		} else {
+			goto out;
+		}
+		select_i2c_ch_pca(I2C_CH_DEFAULT);
+
+		/* Change SerDes1's Refclk1 to 125MHz for on board
+		 * SGMIIs or Aurora to work
+		 */
+		for (lane = 0; lane < SRDS_MAX_LANES; lane++) {
+			enum srds_prtcl lane_prtcl = serdes_get_prtcl
+						(0, serdes1_prtcl, lane);
+			switch (lane_prtcl) {
+			case SGMII_FM1_DTSEC1:
+			case SGMII_FM1_DTSEC2:
+			case SGMII_FM1_DTSEC3:
+			case SGMII_FM1_DTSEC4:
+			case SGMII_FM1_DTSEC5:
+			case SGMII_FM1_DTSEC6:
+			case AURORA:
+				flag_sgmii_aurora_prtcl++;
+				break;
+			default:
+				break;
+			}
+		}
+
+		if (flag_sgmii_aurora_prtcl)
+			QIXIS_WRITE(brdcfg[4], QIXIS_SRDS1CLK_125);
+
+		/* Steps For SerDes PLLs reset and reconfiguration after
+		 * changing SerDes's refclks
+		 */
+		for (i = 0; i < CONFIG_SYS_FSL_SRDS_NUM_PLLS; i++) {
+			debug("For PLL%d reset and reconfiguration after"
+			       " changing refclks\n", i+1);
+			clrbits_be32(&srds_regs->bank[i].rstctl,
+					SRDS_RSTCTL_SDRST_B);
+			udelay(10);
+			clrbits_be32(&srds_regs->bank[i].rstctl,
+				(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B));
+			udelay(10);
+			setbits_be32(&srds_regs->bank[i].rstctl,
+					SRDS_RSTCTL_RST);
+			setbits_be32(&srds_regs->bank[i].rstctl,
+				(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B
+				| SRDS_RSTCTL_SDRST_B));
+		}
+		break;
+	default:
+		printf("WARNING:IDT8T49N222A configuration not"
+			" supported for:%x SerDes1 Protocol.\n",
+			serdes1_prtcl);
+	}
+
+out:
+	/* Clearing SRDS_RST_MSK bit as now
+	 * SerDes reset event can cause a reset request
+	 */
+	clrbits_be32(&gur->rstrqmr1, FSL_CORENET_RSTRQMR1_SRDS_RST_MSK);
+	return ret;
+}
+
+int config_serdes2_refclks(void)
+{
+	ccsr_gur_t *gur = (void __iomem *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	serdes_corenet_t *srds2_regs =
+		(void *)CONFIG_SYS_FSL_CORENET_SERDES2_ADDR;
+	u32 serdes2_prtcl;
+	int ret = 0;
+	int i;
+
+	serdes2_prtcl = in_be32(&gur->rcwsr[4]) &
+			FSL_CORENET2_RCWSR4_SRDS2_PRTCL;
+	if (!serdes2_prtcl) {
+		debug("SERDES2 is not enabled\n");
+		return -ENODEV;
+	}
+	serdes2_prtcl >>= FSL_CORENET2_RCWSR4_SRDS2_PRTCL_SHIFT;
+	debug("Using SERDES2 Protocol: 0x%x:\n", serdes2_prtcl);
+
+	/* To prevent generation of reset request from SerDes
+	 * while changing the refclks, By setting SRDS_RST_MSK bit,
+	 * SerDes reset event cannot cause a reset request
+	 */
+	setbits_be32(&gur->rstrqmr1, FSL_CORENET_RSTRQMR1_SRDS_RST_MSK);
+
+	/* Reconfigure IDT idt8t49n222a device for PCIe SATA to work
+	 * For this SerDes2's Refclk1 need to be set to 100MHz
+	 */
+	switch (serdes2_prtcl) {
+	case 0x9E:
+	case 0x9A:
+	case 0xb2:
+		debug("Configuring IDT for PCIe SATA for srds_prctl:%x\n",
+			serdes2_prtcl);
+		ret = select_i2c_ch_pca(I2C_CH_IDT);
+		if (!ret) {
+			ret = set_serdes_refclk(IDT_SERDES2_ADDRESS, 2,
+					SERDES_REFCLK_100,
+					SERDES_REFCLK_156_25, 0);
+			if (ret) {
+				printf("IDT8T49N222A configuration failed.\n");
+				goto out;
+			} else
+				debug("IDT8T49N222A configured.\n");
+		} else {
+			goto out;
+		}
+		select_i2c_ch_pca(I2C_CH_DEFAULT);
+
+		/* Steps For SerDes PLLs reset and reconfiguration after
+		 * changing SerDes's refclks
+		 */
+		for (i = 0; i < CONFIG_SYS_FSL_SRDS_NUM_PLLS; i++) {
+			clrbits_be32(&srds2_regs->bank[i].rstctl,
+					SRDS_RSTCTL_SDRST_B);
+			udelay(10);
+			clrbits_be32(&srds2_regs->bank[i].rstctl,
+				(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B));
+			udelay(10);
+			setbits_be32(&srds2_regs->bank[i].rstctl,
+					SRDS_RSTCTL_RST);
+			setbits_be32(&srds2_regs->bank[i].rstctl,
+				(SRDS_RSTCTL_SDEN | SRDS_RSTCTL_PLLRST_B
+				| SRDS_RSTCTL_SDRST_B));
+
+			udelay(10);
+		}
+		break;
+	default:
+		printf("IDT configuration not supported for:%x S2 Protocol.\n",
+			serdes2_prtcl);
+	}
+
+out:
+	/* Clearing SRDS_RST_MSK bit as now
+	 * SerDes reset event can cause a reset request
+	 */
+	clrbits_be32(&gur->rstrqmr1, FSL_CORENET_RSTRQMR1_SRDS_RST_MSK);
+	return ret;
+}
+
 int board_early_init_r(void)
 {
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
 	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
+	int ret;
 
 	/*
 	 * Remap Boot flash + PROMJET region to caching-inhibited
@@ -292,6 +696,45 @@ int board_early_init_r(void)
 	set_liodns();
 #ifdef CONFIG_SYS_DPAA_QBMAN
 	setup_portals();
+#endif
+	/* SerDes1 refclks need to be set again, as default clks
+	 * are not suitable for CPRI and onboard SGMIIs to work
+	 * simultaneously.
+	 * This function will set SerDes1's Refclk1 and refclk2
+	 * as per SerDes1 protocols
+	 */
+	if (config_serdes1_refclks())
+		printf("SerDes1 Refclks couldn't set properly.\n");
+	else
+		printf("SerDes1 Refclks have been set.\n");
+
+	/* SerDes2 refclks need to be set again, as default clks
+	 * are not suitable for PCIe SATA to work
+	 * This function will set SerDes2's Refclk1 and refclk2
+	 * for SerDes2 protocols having PCIe in them
+	 * for PCIe SATA to work
+	 */
+	ret = config_serdes2_refclks();
+	if (!ret)
+		printf("SerDes2 Refclks have been set.\n");
+	else if (ret == -ENODEV)
+		printf("SerDes disable, Refclks couldn't change.\n");
+	else
+		printf("SerDes2 Refclk reconfiguring failed.\n");
+
+#if defined(CONFIG_SYS_FSL_ERRATUM_A006384) || \
+			defined(CONFIG_SYS_FSL_ERRATUM_A006475)
+	/* Rechecking the SerDes locks after all SerDes configurations
+	 * are done, As SerDes PLLs may not lock reliably at 5 G VCO
+	 * and at cold temperatures.
+	 * Following sequence ensure the proper locking of SerDes PLLs.
+	 */
+	if (SVR_MAJ(get_svr()) == 1) {
+		if (check_serdes_pll_locks())
+			printf("SerDes plls still not locked properly.\n");
+		else
+			printf("SerDes plls have been locked well.\n");
+	}
 #endif
 
 	/* Configure VSC3316 and VSC3308 crossbar switches */
@@ -374,22 +817,6 @@ static int serdes_refclock(u8 sw, u8 sdclk)
 	}
 
 	return ret;
-}
-
-static const char *serdes_clock_to_string(u32 clock)
-{
-	switch (clock) {
-	case SRDS_PLLCR0_RFCK_SEL_100:
-		return "100";
-	case SRDS_PLLCR0_RFCK_SEL_125:
-		return "125";
-	case SRDS_PLLCR0_RFCK_SEL_156_25:
-		return "156.25";
-	case SRDS_PLLCR0_RFCK_SEL_161_13:
-		return "161.13";
-	default:
-		return "122.88";
-	}
 }
 
 #define NUM_SRDS_BANKS	2

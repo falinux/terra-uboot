@@ -1,24 +1,10 @@
 /*
  * Atheros PHY drivers
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * Copyright 2011, 2013 Freescale Semiconductor, Inc.
  * author Andy Fleming
- *
  */
 #include <phy.h>
 
@@ -27,6 +13,7 @@ static int ar8021_config(struct phy_device *phydev)
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1d, 0x05);
 	phy_write(phydev, MDIO_DEVAD_NONE, 0x1e, 0x3D47);
 
+	phydev->supported = phydev->drv->features;
 	return 0;
 }
 
@@ -54,7 +41,7 @@ static int ar8035_config(struct phy_device *phydev)
 static struct phy_driver AR8021_driver =  {
 	.name = "AR8021",
 	.uid = 0x4dd040,
-	.mask = 0xfffff0,
+	.mask = 0x4ffff0,
 	.features = PHY_GBIT_FEATURES,
 	.config = ar8021_config,
 	.startup = genphy_startup,
@@ -90,9 +77,9 @@ static int ar8031_config(struct phy_device *phydev)
 >>>>>>> v2013.07
 #endif
 static struct phy_driver AR8031_driver =  {
-	.name = "AR8031",
+	.name = "AR8031/AR8033",
 	.uid = 0x4dd074,
-	.mask = 0xfffff0,
+	.mask = 0xffffffef,
 	.features = PHY_GBIT_FEATURES,
 //<<<<<<< HEAD
 //	.config = ar8031_config,
@@ -108,7 +95,7 @@ static struct phy_driver AR8031_driver =  {
 static struct phy_driver AR8035_driver =  {
 	.name = "AR8035",
 	.uid = 0x4dd072,
-	.mask = 0x4fffff,
+	.mask = 0xffffffef,
 	.features = PHY_GBIT_FEATURES,
 	.config = ar8035_config,
 	.startup = genphy_startup,

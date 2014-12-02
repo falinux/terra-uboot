@@ -1,22 +1,7 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -26,9 +11,11 @@
  */
 
 #include <common.h>
+#include <lcd.h>
 #include <os.h>
 #include <serial.h>
 #include <linux/compiler.h>
+#include <asm/state.h>
 
 /*
  *
@@ -45,7 +32,10 @@ static unsigned int serial_buf_read;
 
 static int sandbox_serial_init(void)
 {
-	os_tty_raw(0);
+	struct sandbox_state *state = state_get_current();
+
+	if (state->term_raw != STATE_TERM_COOKED)
+		os_tty_raw(0, state->term_raw == STATE_TERM_RAW_WITH_SIGS);
 	return 0;
 }
 
@@ -75,6 +65,9 @@ static int sandbox_serial_tstc(void)
 	ssize_t count;
 
 	os_usleep(100);
+#ifdef CONFIG_LCD
+	lcd_sync();
+#endif
 	if (next_index == serial_buf_read)
 		return 1;	/* buffer full */
 

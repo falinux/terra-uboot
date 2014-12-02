@@ -1,24 +1,8 @@
 /*
- *  (C) Copyright 2010,2011
+ *  (C) Copyright 2010-2014
  *  NVIDIA Corporation <www.nvidia.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -125,11 +109,17 @@ static int uart_configs[] = {
 	-1,
 	-1,
 	-1,
-#else	/* Tegra114 */
+#elif defined(CONFIG_TEGRA114)
 	-1,
 	-1,
 	-1,
 	FUNCMUX_UART4_GMI,	/* UARTD */
+	-1,
+#else	/* Tegra124 */
+	FUNCMUX_UART1_KBC,	/* UARTA */
+	-1,
+	-1,
+	FUNCMUX_UART4_GPIO,	/* UARTD */
 	-1,
 #endif
 };

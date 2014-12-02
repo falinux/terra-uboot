@@ -6,23 +6,7 @@
  * Copyright (C) 2008
  * Guennadi Liakhovetki, DENX Software Engineering, <lg@denx.de>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  *
  * 2007-09-21 - Restructured codes by jsgood (jsgood.yang@samsung.com)
  * 2007-09-21 - Added MoviNAND and OneNAND boot codes by
@@ -92,33 +76,6 @@ _end_vect:
  *
  *************************************************************************
  */
-
-.globl _TEXT_BASE
-_TEXT_BASE:
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_TEXT_BASE)
-	.word	CONFIG_SPL_TEXT_BASE
-#else
-	.word	CONFIG_SYS_TEXT_BASE
-#endif
-
-/*
- * These are defined in the board-specific linker script.
- * Subtracting _start from them lets the linker put their
- * relative position in the executable instead of leaving
- * them null.
- */
-
-.globl _bss_start_ofs
-_bss_start_ofs:
-	.word __bss_start - _start
-
-.globl _bss_end_ofs
-_bss_end_ofs:
-	.word __bss_end - _start
-
-.globl _end_ofs
-_end_ofs:
-	.word _end - _start
 
 /* IRQ stack memory (calculated at run-time) + 8 bytes */
 .globl IRQ_STACK_START_IN

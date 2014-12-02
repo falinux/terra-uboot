@@ -17,7 +17,7 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 #include "tegra30-common.h"
 
@@ -30,6 +30,10 @@
 #define V_PROMPT		"Tegra30 (Cardhu) # "
 #define CONFIG_TEGRA_BOARD_STRING	"NVIDIA Cardhu"
 
+#define BOARD_EXTRA_ENV_SETTINGS \
+	"board_name=cardhu-a04\0" \
+	"fdtfile=tegra30-cardhu-a04.dtb\0"
+
 /* Board-specific serial config */
 #define CONFIG_SERIAL_MULTI
 #define CONFIG_TEGRA_ENABLE_UARTA
@@ -40,12 +44,13 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 
 /* I2C */
-#define CONFIG_TEGRA_I2C
+#define CONFIG_SYS_I2C_TEGRA
 #define CONFIG_SYS_I2C_INIT_BOARD
 #define CONFIG_I2C_MULTI_BUS
 #define CONFIG_SYS_MAX_I2C_BUS		TEGRA_I2C_NUM_CONTROLLERS
 #define CONFIG_SYS_I2C_SPEED		100000
 #define CONFIG_CMD_I2C
+#define CONFIG_SYS_I2C
 
 /* SD/MMC */
 #define CONFIG_MMC

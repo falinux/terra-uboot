@@ -11,23 +11,7 @@
  *	Santosh Shilimkar <santosh.shilimkar@ti.com>
  *	Rajendra Nayak <rnayak@ti.com>
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <i2c.h>
@@ -212,6 +196,18 @@ static const struct dpll_params *get_ddr_dpll_params
 	return &dpll_data->ddr[sysclk_ind];
 }
 
+#ifdef CONFIG_DRIVER_TI_CPSW
+static const struct dpll_params *get_gmac_dpll_params
+			(struct dplls const *dpll_data)
+{
+	u32 sysclk_ind = get_sys_clk_index();
+
+	if (!dpll_data->gmac)
+		return NULL;
+	return &dpll_data->gmac[sysclk_ind];
+}
+#endif
+
 static void do_setup_dpll(u32 const base, const struct dpll_params *params,
 				u8 lock, char *dpll)
 {
@@ -343,7 +339,7 @@ void configure_mpu_dpll(void)
 	debug("MPU DPLL locked\n");
 }
 
-#ifdef CONFIG_USB_EHCI_OMAP
+#if defined(CONFIG_USB_EHCI_OMAP) || defined(CONFIG_USB_XHCI_OMAP)
 static void setup_usb_dpll(void)
 {
 	const struct dpll_params *params;
@@ -408,62 +404,19 @@ static void setup_dplls(void)
 	/* MPU dpll */
 	configure_mpu_dpll();
 
-#ifdef CONFIG_USB_EHCI_OMAP
+#if defined(CONFIG_USB_EHCI_OMAP) || defined(CONFIG_USB_XHCI_OMAP)
 	setup_usb_dpll();
 #endif
 	params = get_ddr_dpll_params(*dplls_data);
 	do_setup_dpll((*prcm)->cm_clkmode_dpll_ddrphy,
 		      params, DPLL_LOCK, "ddr");
-}
 
-#ifdef CONFIG_SYS_CLOCKS_ENABLE_ALL
-static void setup_non_essential_dplls(void)
-{
-	u32 abe_ref_clk;
-	const struct dpll_params *params;
-
-	/* IVA */
-	clrsetbits_le32((*prcm)->cm_bypclk_dpll_iva,
-		CM_BYPCLK_DPLL_IVA_CLKSEL_MASK, DPLL_IVA_CLKSEL_CORE_X2_DIV_2);
-
-	params = get_iva_dpll_params(*dplls_data);
-	do_setup_dpll((*prcm)->cm_clkmode_dpll_iva, params, DPLL_LOCK, "iva");
-
-	/* Configure ABE dpll */
-	params = get_abe_dpll_params(*dplls_data);
-#ifdef CONFIG_SYS_OMAP_ABE_SYSCK
-	abe_ref_clk = CM_ABE_PLL_REF_CLKSEL_CLKSEL_SYSCLK;
-
-	if (omap_revision() == DRA752_ES1_0)
-		/* Select the sys clk for dpll_abe */
-		clrsetbits_le32((*prcm)->cm_abe_pll_sys_clksel,
-				CM_CLKSEL_ABE_PLL_SYS_CLKSEL_MASK,
-				CM_ABE_PLL_SYS_CLKSEL_SYSCLK2);
-#else
-	abe_ref_clk = CM_ABE_PLL_REF_CLKSEL_CLKSEL_32KCLK;
-	/*
-	 * We need to enable some additional options to achieve
-	 * 196.608MHz from 32768 Hz
-	 */
-	setbits_le32((*prcm)->cm_clkmode_dpll_abe,
-			CM_CLKMODE_DPLL_DRIFTGUARD_EN_MASK|
-			CM_CLKMODE_DPLL_RELOCK_RAMP_EN_MASK|
-			CM_CLKMODE_DPLL_LPMODE_EN_MASK|
-			CM_CLKMODE_DPLL_REGM4XEN_MASK);
-	/* Spend 4 REFCLK cycles at each stage */
-	clrsetbits_le32((*prcm)->cm_clkmode_dpll_abe,
-			CM_CLKMODE_DPLL_RAMP_RATE_MASK,
-			1 << CM_CLKMODE_DPLL_RAMP_RATE_SHIFT);
+#ifdef CONFIG_DRIVER_TI_CPSW
+	params = get_gmac_dpll_params(*dplls_data);
+	do_setup_dpll((*prcm)->cm_clkmode_dpll_gmac, params,
+		      DPLL_LOCK, "gmac");
 #endif
-
-	/* Select the right reference clk */
-	clrsetbits_le32((*prcm)->cm_abe_pll_ref_clksel,
-			CM_ABE_PLL_REF_CLKSEL_CLKSEL_MASK,
-			abe_ref_clk << CM_ABE_PLL_REF_CLKSEL_CLKSEL_SHIFT);
-	/* Lock the dpll */
-	do_setup_dpll((*prcm)->cm_clkmode_dpll_abe, params, DPLL_LOCK, "abe");
 }
-#endif
 
 u32 get_offset_code(u32 volt_offset, struct pmic_data *pmic)
 {
@@ -587,13 +540,6 @@ void scale_vcores(struct vcores_data const *vcores)
 
 	val = optimize_vcore_voltage(&vcores->iva);
 	do_scale_vcore(vcores->iva.addr, val, vcores->iva.pmic);
-
-	 if (emif_sdram_type() == EMIF_SDRAM_TYPE_DDR3) {
-		/* Configure LDO SRAM "magic" bits */
-		writel(2, (*prcm)->prm_sldo_core_setup);
-		writel(2, (*prcm)->prm_sldo_mpu_setup);
-		writel(2, (*prcm)->prm_sldo_mm_setup);
-	}
 }
 
 static inline void enable_clock_domain(u32 const clkctrl_reg, u32 enable_mode)
@@ -765,10 +711,6 @@ void prcm_init(void)
 		timer_init();
 		scale_vcores(*omap_vcores);
 		setup_dplls();
-#ifdef CONFIG_SYS_CLOCKS_ENABLE_ALL
-		setup_non_essential_dplls();
-		enable_non_essential_clocks();
-#endif
 		setup_warmreset_time();
 		break;
 	default:
@@ -784,7 +726,8 @@ void gpi2c_init(void)
 	static int gpi2c = 1;
 
 	if (gpi2c) {
-		i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+		i2c_init(CONFIG_SYS_OMAP24_I2C_SPEED,
+			 CONFIG_SYS_OMAP24_I2C_SLAVE);
 		gpi2c = 0;
 	}
 }

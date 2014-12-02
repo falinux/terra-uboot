@@ -14,24 +14,7 @@
  *
  * COPYRIGHT   AMCC   CORPORATION 2004
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /* define DEBUG for debugging output (obviously ;-)) */
@@ -66,7 +49,6 @@
 		       "SDRAM_" #mnemonic, SDRAM_##mnemonic, data);	\
 	} while (0)
 
-#if !defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL)
 static void update_rdcc(void)
 {
 	u32 val;
@@ -89,7 +71,6 @@ static void update_rdcc(void)
 		}
 	}
 }
-#endif
 
 #if defined(CONFIG_440)
 /*
@@ -118,7 +99,6 @@ void dcbz_area(u32 start_address, u32 num_bytes);
 
 #define MULDIV64(m1, m2, d)	(u32)(((u64)(m1) * (u64)(m2)) / (u64)(d))
 
-#if !defined(CONFIG_NAND_SPL)
 /*-----------------------------------------------------------------------------+
  * sdram_memsize
  *-----------------------------------------------------------------------------*/
@@ -234,7 +214,6 @@ void board_add_ram_info(int use_default)
 	val = (val & SDRAM_MMODE_DCL_MASK) >> 4;
 	printf(", CL%d)", val);
 }
-#endif /* !CONFIG_NAND_SPL */
 
 #if defined(CONFIG_SPD_EEPROM)
 
@@ -459,8 +438,7 @@ phys_size_t initdram(int board_type)
 	 */
 
 	/* switch to correct I2C bus */
-	I2C_SET_BUS(CONFIG_SYS_SPD_BUS_NUM);
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+	i2c_set_bus_num(CONFIG_SYS_SPD_BUS_NUM);
 
 	/*------------------------------------------------------------------
 	 * Clear out the serial presence detect buffers.
@@ -2861,16 +2839,6 @@ static void test(void)
  *---------------------------------------------------------------------------*/
 phys_size_t initdram(int board_type)
 {
-	/*
-	 * Only run this SDRAM init code once. For NAND booting
-	 * targets like Kilauea, we call initdram() early from the
-	 * 4k NAND booting image (CONFIG_NAND_SPL) from nand_boot().
-	 * Later on the NAND U-Boot image runs (CONFIG_NAND_U_BOOT)
-	 * which calls initdram() again. This time the controller
-	 * mustn't be reconfigured again since we're already running
-	 * from SDRAM.
-	 */
-#if !defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL)
 	unsigned long val;
 
 #if defined(CONFIG_440)
@@ -2987,12 +2955,10 @@ phys_size_t initdram(int board_type)
 #endif
 
 #if defined(CONFIG_PPC4xx_DDR_AUTOCALIBRATION)
-#if !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
 	/*------------------------------------------------------------------
 	 | DQS calibration.
 	 +-----------------------------------------------------------------*/
 	DQS_autocalibration();
-#endif /* !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL) */
 #endif /* CONFIG_PPC4xx_DDR_AUTOCALIBRATION */
 
 	/*
@@ -3027,13 +2993,10 @@ phys_size_t initdram(int board_type)
 	set_mcsr(get_mcsr());
 #endif /* CONFIG_PPC4xx_DDR_AUTOCALIBRATION */
 
-#endif /* !defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL) */
-
 	return (CONFIG_SYS_MBYTES_SDRAM << 20);
 }
 #endif /* CONFIG_SPD_EEPROM */
 
-#if !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
 #if defined(CONFIG_440)
 u32 mfdcr_any(u32 dcr)
 {
@@ -3080,7 +3043,6 @@ void mtdcr_any(u32 dcr, u32 val)
 	}
 }
 #endif /* defined(CONFIG_440) */
-#endif /* !defined(CONFIG_NAND_U_BOOT) &&  !defined(CONFIG_NAND_SPL) */
 
 inline void ppc4xx_ibm_ddr2_register_dump(void)
 {

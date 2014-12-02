@@ -2,23 +2,7 @@
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /*
@@ -79,6 +63,15 @@ extern int cmd_usage(const cmd_tbl_t *cmdtp);
 extern int var_complete(int argc, char * const argv[], char last_char, int maxv, char *cmdv[]);
 extern int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp);
 #endif
+
+/**
+ * cmd_process_error() - report and process a possible error
+ *
+ * @cmdtp: Command which caused the error
+ * @err: Error code (0 if none, -ve for error, like -EIO)
+ * @return 0 if there is not error, 1 (CMD_RET_FAILURE) if an error is found
+ */
+int cmd_process_error(cmd_tbl_t *cmdtp, int err);
 
 /*
  * Monitor Command
