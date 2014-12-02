@@ -20,31 +20,31 @@ uboot 사용법
 	4.1 distclean
 		make distclean
 		or
-		make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- distclean
+		make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- distclean
 
 	4.2  sabrelite 보드의 경우
 		make mx6qsabrelite_config
 		or
-		make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- mx6qsabrelite_config
+		make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- mx6qsabrelite_config
 
 	4.3  em-imx6dq 보드의 경우
-		make mx6qem2g_config
+		make falinux6q2g_config
 		or
-		make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- mx6qem2g_config
+		make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- falinux6q2g_config
 
 	4.4  em-imx6dq 보드의 경우 4G 지원 모델
-		make mx6qem4g_config
+		make falinux6q4g_config
 		or
-		make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- mx6qem4g_config
+		make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- falinux6q4g_config
 
 	4.5  nadia c-server 보드의 경우 4G 지원 모델
-		make mx6qem4g_nadia_config
-		make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- mx6qem4g__nadia_config
+		make falinux6q4g_config
+		make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- falinux6q4g_config
 
 5. 컴파일 방법
 	make u-boot.imx
 	or
-	make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- u-boot.imx
+	make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- u-boot.imx
 
 6. fusing 방법
 
