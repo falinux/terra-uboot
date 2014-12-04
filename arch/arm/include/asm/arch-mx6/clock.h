@@ -60,5 +60,5 @@ int enable_i2c_clk(unsigned char enable, unsigned i2c_num);
 void enable_ipu_clock(void);
 int enable_fec_anatop_clock(enum enet_freq freq);
 //falinux
-void enable_ddr_clock(void); 
+void ccm_reg_view(void); 
 #endif /* __ASM_ARCH_CLOCK_H */

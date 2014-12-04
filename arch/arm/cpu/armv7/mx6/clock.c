@@ -593,15 +593,48 @@ void enable_ipu_clock(void)
 	reg |= MXC_CCM_CCGR3_IPU1_IPU_MASK;
 	writel(reg, &mxc_ccm->CCGR3);
 }
-void enable_ddr_clock(void)
+
+void ccm_reg_view(void)
 {
       struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
       int reg;
-      reg = readl(&mxc_ccm->cbcmr);
-      reg &= ~(MXC_CCM_CBCMR_PRE_PERIPH_CLK_SEL_MASK);
-      reg |=  (0x1 << MXC_CCM_CBCMR_PRE_PERIPH_CLK_SEL_OFFSET);
-      writel(reg, &mxc_ccm->cbcmr);
+
+    reg = readl(&mxc_ccm->ccr    );      
+    printf("ccm->ccr     --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->ccdr   );    
+    printf("ccm->ccdr    --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->csr    );
+    printf("ccm->csr     --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->ccsr   );    
+    printf("ccm->ccsr    --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cacrr  );
+    printf("ccm->cacrr   --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cbcdr  );    
+    printf("ccm->cbcdr   --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cbcmr  );
+    printf("ccm->cbcmr   --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cscmr1 );    
+    printf("ccm->cscmr1  --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cscmr2 );
+    printf("ccm->cscmr2  --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cscdr1 );    
+    printf("ccm->cscdr1  --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cs1cdr );
+    printf("ccm->cs1cdr  --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cs2cdr );    
+    printf("ccm->cs2cdr  --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cdcdr  );
+    printf("ccm->cdcdr   --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->chsccdr);    
+    printf("ccm->chsccdr --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cscdr2 );
+    printf("ccm->cscdr2  --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cscdr3 );    
+    printf("ccm->cscdr3  --->> 0x%08X\n", reg);      
+    reg = readl(&mxc_ccm->cscdr4 );    
+    printf("ccm->cscdr4  --->> 0x%08X\n", reg);      
 }
+
 /***************************************************/
 
 U_BOOT_CMD(

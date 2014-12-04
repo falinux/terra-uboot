@@ -361,6 +361,7 @@ iomux_v3_cfg_t const enet_pads[] = {
 };
 #endif
 
+
 // [FALINUX]
 #ifndef CONFIG_FALINUX
 static iomux_v3_cfg_t const misc_pads[] = {
@@ -649,8 +650,17 @@ int board_eth_init(bd_t *bis)
 	bus = fec_get_miibus(base, -1);
 	if (!bus)
 		return 0;
+
+// [FALINUX]
+#ifndef CONFIG_FALINUX
 	/* scan phy 4,5,6,7 */
 	phydev = phy_find_by_mask(bus, (0xf << 4), PHY_INTERFACE_MODE_RGMII);
+#else
+	/* scan phy 0,1,2,3,4,5,6,7 */
+	phydev = phy_find_by_mask(bus, (0xff), PHY_INTERFACE_MODE_RGMII);
+#endif
+
+
 	if (!phydev) {
 		free(bus);
 		return 0;
@@ -1116,10 +1126,9 @@ void boot_beep(void)
 // [FALINUX -END ]---------------------------------------- 
 // only nadia
 
-
 int board_early_init_f(void)
 {
-	setup_iomux_uart();
+    setup_iomux_uart();
 
 // [FALINUX]
 #ifndef CONFIG_FALINUX
@@ -1137,14 +1146,10 @@ int board_early_init_f(void)
 	setup_buttons();
 #endif
 
-// [FALINUX] - DDR3 400MHz 설정시
-#ifdef CONFIG_DDR_400M
-	enable_ddr_clock();
-#endif
-
 #if defined(CONFIG_VIDEO_IPUV3)
 	setup_display();
 #endif
+
 	return 0;
 }
 
@@ -1161,6 +1166,10 @@ int board_init(void)
 {
 	struct iomuxc_base_regs *const iomuxc_regs
 		= (struct iomuxc_base_regs *)IOMUXC_BASE_ADDR;
+
+#ifdef CONFIG_FALINUX
+	ezimx_set_mx6_cpu_clock_99600();
+#endif
 
 	clrsetbits_le32(&iomuxc_regs->gpr[1],
 			IOMUXC_GPR1_OTG_ID_MASK,
@@ -1322,6 +1331,11 @@ static const struct boot_mode board_boot_modes[] = {
 
 int misc_init_r(void)
 {
+// [FALINUX]
+#ifdef CONFIG_FALINUX
+//    ccm_reg_view();   // CCM 레지스트 View
+#endif
+    
 #ifdef CONFIG_PREBOOT
 // [FALINUX]
 #ifndef CONFIG_FALINUX

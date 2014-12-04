@@ -308,9 +308,19 @@ const struct boot_mode soc_boot_modes[] = {
 void s_init(void)
 {
 	struct anatop_regs *anatop = (struct anatop_regs *)ANATOP_BASE_ADDR;
+// [FALINUX]
+#ifndef CONFIG_FALINUX
 	int is_6q = is_cpu_type(MXC_CPU_MX6Q);
+#else
+    struct mxc_ccm_reg *ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;	
+#endif	
 	u32 mask480;
 	u32 mask528;
+
+// [FALINUX]
+#ifdef CONFIG_FALINUX
+	u32 reg, periph1, periph2;
+#endif
 
 	/* Due to hardware limitation, on MX6Q we need to gate/ungate all PFDs
 	 * to make sure PFD is working right, otherwise, PFDs may
@@ -322,15 +332,39 @@ void s_init(void)
 		ANATOP_PFD_CLKGATE_MASK(1) |
 		ANATOP_PFD_CLKGATE_MASK(2) |
 		ANATOP_PFD_CLKGATE_MASK(3);
+
+// [FALINUX]
+#ifndef CONFIG_FALINUX
 	mask528 = ANATOP_PFD_CLKGATE_MASK(0) |
 		ANATOP_PFD_CLKGATE_MASK(1) |
 		ANATOP_PFD_CLKGATE_MASK(3);
+#else
+	mask528 = ANATOP_PFD_CLKGATE_MASK(1) |
+ 		ANATOP_PFD_CLKGATE_MASK(3);
+#endif
 
 	/*
 	 * Don't reset PFD2 on DL/S
 	 */
+// [FALINUX]
+#ifndef CONFIG_FALINUX
 	if (is_6q)
+#else
+	reg = readl(&ccm->cbcmr);
+	periph2 = ((reg & MXC_CCM_CBCMR_PRE_PERIPH2_CLK_SEL_MASK)
+		        >> MXC_CCM_CBCMR_PRE_PERIPH2_CLK_SEL_OFFSET);
+	periph1 = ((reg & MXC_CCM_CBCMR_PRE_PERIPH_CLK_SEL_MASK)
+		        >> MXC_CCM_CBCMR_PRE_PERIPH_CLK_SEL_OFFSET);
+
+	/* Checking if PLL2 PFD0 or PLL2 PFD2 is using for periph clock */
+	if ((periph2 != 0x2) && (periph1 != 0x2))
+		mask528 |= ANATOP_PFD_CLKGATE_MASK(0);
+
+	if ((periph2 != 0x1) && (periph1 != 0x1) &&
+		(periph2 != 0x3) && (periph1 != 0x3))	    
+#endif
 		mask528 |= ANATOP_PFD_CLKGATE_MASK(2);
+
 	writel(mask480, &anatop->pfd_480_set);
 	writel(mask528, &anatop->pfd_528_set);
 	writel(mask480, &anatop->pfd_480_clr);

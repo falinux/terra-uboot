@@ -4,7 +4,7 @@ image_filename="u-boot.imx"
 
 if [ ! -f include/autoconf.mk ]; then 
 	make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- falinux6q2g_config
-	#make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- falinux6q4g_config
+#	make arm=ARM CROSS_COMPILE=arm-linux-gnueabihf- falinux6q4g_config
 #	make arm=ARM CROSS_COMPILE=arm-fsl-linux-gnueabi- mx6qem4g_config
 fi
 
