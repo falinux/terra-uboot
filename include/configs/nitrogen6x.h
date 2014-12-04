@@ -301,9 +301,10 @@
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
 	"loadaddr=0x12000000\0" \
+	"fdt_addr=0x18000000\0" \
 	"boot_fdt=try\0" \
 	"bootdelay=3\0" \
-	"bootargs=console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootdelay=5 " \
+	"bootargs=console=ttymxc0,115200 root=/dev/mmcblk0p1 rw --no-log rootfstype=ext4 rootdelay=5 " \
 	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
 	"bootargs_sata=setenv bootargs console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootwait " \
 	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
@@ -319,9 +320,12 @@
 	"ip_dyn=yes\0" \
 	"uboot=tftpboot 0x12000000 u-boot.imx; mmc write 0x12000000 2 800\0" \
 	"kernel=tftpboot 0x12000000 uImage.imx6; mmc write 0x12000000 1000 2800\0" \
+	"dtb=tftpboot 0x18000000 imx6q-terra.dtb; mmc write 0x18000000 3A00 400\0" \
 	"ramdisk=tftpboot 0x1a000000 ramdisk.imx6-1.0-32M.gz; mmc write 0x1a000000 4000 8000\0" \
 	"bootram=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x1a000000 4000 8000; bootm 0x12000000\0" \
 	"bootmmc=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; bootm 0x12000000\0" \
+	"bootdtbram=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x18000000 3A00 400; mmc read 0x1a000000 4000 8000; bootm $loadaddr - $fdt_addr\0" \
+	"bootdtbmmc=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x18000000 3A00 400; bootm $loadaddr - $fdt_addr\0" \
 	"bootcmd=run bootargs_ram bootram \0"
 #elif defined(CONFIG_NADIA) //nadia -> load boot image from mmc file system
 #define CONFIG_EXTRA_ENV_SETTINGS \
