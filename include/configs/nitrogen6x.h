@@ -301,9 +301,21 @@
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
 	"loadaddr=0x12000000\0" \
+	"fdt_addr=0x18000000\0" \
+	"ram_addr=0x1a000000\0" \
 	"boot_fdt=try\0" \
-	"bootdelay=3\0" \
-	"bootargs=console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootdelay=5 " \
+	"bootdelay=2\0" \
+	"ethaddr=00:FA:14:06:03:00\0" \
+	"serverip=192.168.10.132\0" \
+	"ipaddr=192.168.10.248\0" \
+	"netmask=255.255.0.0\0" \
+	"gatewayip=192.168.10.1\0" \
+	"ip_dyn=yes\0" \
+	"uboot=tftpboot 0x12000000 u-boot.imx; mmc write 0x12000000 2 800\0" \
+	"kernel=tftpboot 0x12000000 uImage.imx6; mmc write 0x12000000 1000 2800\0" \
+	"dtb=tftpboot 0x18000000 imx6q-terra.dtb; mmc write 0x18000000 3A00 400\0" \
+	"ramdisk=tftpboot 0x1a000000 ramdisk.imx6-1.0-32M.gz; mmc write 0x1a000000 4000 8000\0" \
+	"bootargs=console=ttymxc0,115200 root=/dev/mmcblk0p1 rw --no-log rootfstype=ext4 rootdelay=5 " \
 	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
 	"bootargs_sata=setenv bootargs console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootwait " \
 	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
@@ -311,17 +323,10 @@
 	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
 	"bootargs_mmc=setenv bootargs console=ttymxc0,115200 root=/dev/mmcblk0p1 rw --no-log rootfstype=ext4 rootdelay=5 " \
 	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
-	"ethaddr=00:FA:14:06:03:00\0" \
-	"serverip=192.168.10.132\0" \
-	"ipaddr=192.168.10.248\0" \
-	"netmask=255.255.0.0\0" \
-	"gatewayip=192.168.10.1\0" \
-	"ip_dyn=yes\0" \
-	"uboot=tftpboot 0x12000000 u-boot.imx; mmc write 0x12000000 2 800\0" \
-	"kernel=tftpboot 0x12000000 uImage.imx6; mmc write 0x12000000 1000 2800\0" \
-	"ramdisk=tftpboot 0x1a000000 ramdisk.imx6-1.0-32M.gz; mmc write 0x1a000000 4000 8000\0" \
 	"bootram=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x1a000000 4000 8000; bootm 0x12000000\0" \
 	"bootmmc=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; bootm 0x12000000\0" \
+	"bootdtbram=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x18000000 3A00 400; mmc read 0x1a000000 4000 8000; bootm 0x12000000 - 0x18000000\0" \
+	"bootdtbmmc=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x18000000 3A00 400; bootm 0x12000000 - 0x18000000\0" \
 	"bootcmd=run bootargs_ram bootram \0"
 #elif defined(CONFIG_NADIA) //nadia -> load boot image from mmc file system
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -329,33 +334,34 @@
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
 	"loadaddr=0x12000000\0" \
+	"fdt_addr=0x18000000\0" \
 	"ram_addr=0x1a000000\0" \
 	"boot_fdt=try\0" \
-	"bootdelay=3\0" \
-	"bootargs=console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootdelay=5 " \
-	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
-	"bootargs_sata=setenv bootargs console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootwait " \
-	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
-	"bootargs_ram=setenv bootargs console=ttymxc0,115200 root=/dev/ram0 rw --no-log initrd=$ram_addr,16M ramdisk=32768 " \
-	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
-	"bootargs_mmc=setenv bootargs console=ttymxc0,115200 root=/dev/mmcblk0p1 rw --no-log rootfstype=ext4 rootdelay=5 " \
-	"video=mxcfb0:dev=hdmi,1920x1080@60,if=RGB24 vmalloc=192M\0" \
-	"ethaddr=00:FA:14:06:03:00\0" \
+	"bootdelay=2\0" \
+	"ethaddr=00:FA:14:12:04:00\0" \
 	"serverip=192.168.10.132\0" \
-	"ipaddr=192.168.10.248\0" \
+	"ipaddr=192.168.10.249\0" \
 	"netmask=255.255.0.0\0" \
 	"gatewayip=192.168.10.1\0" \
 	"ip_dyn=yes\0" \
 	"uboot=tftpboot 0x12000000 u-boot.imx; mmc write 0x12000000 2 800\0" \
 	"kernel=tftpboot 0x12000000 uImage.imx6; mmc write 0x12000000 1000 2800\0" \
-	"ramdisk=tftpboot  ramdisk.imx6-1.0-32M.gz; mmc write $ram_addr 4000 8000\0" \
-	"bootram=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read $ram_addr 4000 8000; bootm 0x12000000\0" \
-	"bootmmc=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; bootm 0x12000000\0" \
-	"mmcboot=run bootargs_ram bootram \0" \
-	"fdt_addr=0x18000000\0" \
+	"dtb=tftpboot 0x18000000 imx6q-nadia-f1.dtb; mmc write 0x18000000 3A00 400\0" \
+	"ramdisk=tftpboot 0x1a000000 ramdisk.imx6-1.0-32M.gz; mmc write 0x1a000000 4000 8000\0" \
+	"bootargs=console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootdelay=5 " \
+	"video=mxcfb0:off video=mxcfb1:off video=mxcfb2:off video=mxcfb3:off\0" \
+	"bootargs_sata=setenv bootargs console=ttymxc0,115200 root=/dev/sda1 rw --no-log rootfstype=ext4 rootwait " \
+	"video=mxcfb0:off video=mxcfb1:off video=mxcfb2:off video=mxcfb3:off\0" \
+	"bootargs_ram=setenv bootargs console=ttymxc0,115200 root=/dev/ram0 rw --no-log initrd=0x1a000000,16M ramdisk=32768 " \
+	"video=mxcfb0:off video=mxcfb1:off video=mxcfb2:off video=mxcfb3:off\0" \
+	"bootargs_mmc=setenv bootargs console=ttymxc0,115200 root=/dev/mmcblk0p1 rw --no-log rootfstype=ext4 rootdelay=5 " \
+	"video=mxcfb0:off video=mxcfb1:off video=mxcfb2:off video=mxcfb3:off\0" \
+	"bootdtbram=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x18000000 3A00 400; mmc read 0x1a000000 4000 8000; bootm $loadaddr - 0x18000000\0" \
+	"bootdtbmmc=mmc dev 0; mmcinfo; mmc read 0x12000000 1000 2800; mmc read 0x18000000 3A00 400; bootm 0x12000000 - 0x18000000\0" \
 	"readkernel=ext2load mmc 0 $loadaddr /boot/uImage.imx6; ext2load mmc 0 $fdt_addr /boot/imx6q-nadia-f1.dtb \0" \
-	"readramdisk=ext2load mmc 0 $ram_addr /boot/ramdisk-1.0-imx6-24M.gz \0" \
-	"bootcmd=mmc rescan; mmcinfo; ext2ls mmc 0; mmc dev 0; run readkernel; run readramdisk; bootm $loadaddr - $fdt_addr\0" 
+	"readramdisk=ext2load mmc 0 0x1a000000 /boot/ramdisk-1.0-imx6-24M.gz \0" \
+	"bootpatmmc=mmc rescan; mmcinfo; ext2ls mmc 0; mmc dev 0; run readkernel; run readramdisk; bootm 0x12000000 - 0x18000000\0" \
+	"bootcmd=run bootargs_mmc bootpatmmc\0"
 #else
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"console=ttymxc1\0" \

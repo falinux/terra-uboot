@@ -1167,8 +1167,9 @@ int board_init(void)
 	struct iomuxc_base_regs *const iomuxc_regs
 		= (struct iomuxc_base_regs *)IOMUXC_BASE_ADDR;
 
+// [FALINUX]
 #ifdef CONFIG_FALINUX
-	ezimx_set_mx6_cpu_clock_99600();
+//	ezimx_set_mx6_cpu_clock_99600();
 #endif
 
 	clrsetbits_le32(&iomuxc_regs->gpr[1],
