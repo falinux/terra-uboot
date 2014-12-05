@@ -53,7 +53,5 @@ uboot 사용법
    dd if=u-boot.imx of=/dev/mmcblk0 bs=512 seek=2 && sync
 
 
-
-
 board/freescale/mx6qsabrelite/README 참조...
 
