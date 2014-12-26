@@ -30,7 +30,7 @@
 #include <asm/arch/mxc_hdmi.h>
 #include <i2c.h>
 
-.
+..
 DECLARE_GLOBAL_DATA_PTR;
 #define GP_USB_OTG_PWR	IMX_GPIO_NR(3, 22)
 
